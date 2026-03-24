@@ -12,89 +12,88 @@ import matplotlib.pyplot as plt
 
 np.random.seed(42)
 
-# 采样时间 100Hz
-h = 0.01
+# system parameters
+h = 0.01  # sampling interval, 100 Hz
 
-# 状态方程 [位置, 速度]
+# x_t = [p_t, v_t], model: x_{t+1} = A x_t + G w_t
 A = np.array([[1, h],
               [0, 1]])
 G = np.array([[0], [1]])
 
-# 噪声
-Q = 0.5
-R = 1.5**2
+Q = 0.5       # process noise variance on velocity
+R = 1.5**2    # measurement noise variance (sigma = 1.5 m, problem statement)
 
-# 3个beacon位置（路边，单位：米）
+# beacon positions along the line (outside lane)
 beacons = np.array([50.0, 150.0, 250.0])
 nb = len(beacons)
 
-# 初始值
-P0 = np.diag([100.0, 25.0])
-x0 = np.array([[0.0], [10.0]])
+# initial estimate and covariance
+x_hat = np.array([[0.0], [10.0]])
+P = np.diag([100.0, 25.0])
 
-# 测量函数：距离 = |位置 - beacon位置|
-def h_func(x, noise):
+
+def meas_fn(x, v):
     p = x[0]
-    return np.array([abs(p - b) + noise[i] for i, b in enumerate(beacons)])
+    return np.array([np.abs(p - b) + v[i] for i, b in enumerate(beacons)])
 
-# 测量Jacobian（对位置求导）
-def jhx_func(x):
+
+def meas_jac(x):
     p = x[0]
     H = np.zeros((nb, 2))
     for i, b in enumerate(beacons):
         H[i, 0] = 1.0 if p >= b else -1.0
     return H
 
-# EKF 测量更新
-def measurement_update(sigma_pred, x_pred, y):
-    C = jhx_func(x_pred.flatten())
-    R_mat = R * np.eye(nb)
-    S = C @ sigma_pred @ C.T + R_mat
-    innovation = y - h_func(x_pred.flatten(), np.zeros(nb))
-    x_meas = x_pred + sigma_pred @ C.T @ np.linalg.solve(S, innovation.reshape(-1,1))
-    sigma_meas = sigma_pred - sigma_pred @ C.T @ np.linalg.solve(S, C @ sigma_pred)
-    return sigma_meas, x_meas
 
-# EKF 时间更新
-def time_update(sigma_meas, x_meas):
-    x_pred = A @ x_meas
-    sigma_pred = A @ sigma_meas @ A.T + Q * (G @ G.T)
-    return sigma_pred, x_pred
+def measurement_update(P, x_hat, y):
+    H = meas_jac(x_hat)
+    S = H @ P @ H.T + R * np.eye(nb)
+    innov = y - meas_fn(x_hat, np.zeros(nb))
+    x_hat = x_hat + P @ H.T @ np.linalg.solve(S, innov.reshape(-1, 1))
+    P = P - P @ H.T @ np.linalg.solve(S, H @ P)
+    return P, x_hat
 
-# 仿真
-n_sim = 500
+
+def time_update(P, x_hat):
+    x_hat = A @ x_hat
+    P = A @ P @ A.T + Q * (G @ G.T)
+    return P, x_hat
+
+
+# simulation
+N = 500
 x_true = np.array([[0.0], [10.0]])
-x_pred = x0.copy()
-sigma_pred = P0.copy()
 
-x_true_cache = np.zeros((n_sim, 2))
-x_est_cache  = np.zeros((n_sim-1, 2))
-x_true_cache[0] = x_true.T
+true_log = np.zeros((N, 2))
+est_log  = np.zeros((N - 1, 2))
+true_log[0] = x_true.T
 
-for t in range(n_sim - 1):
-    v_noise = np.random.normal(0, 1.5, nb)
-    y = h_func(x_true.flatten(), v_noise)
-    sigma_meas, x_meas = measurement_update(sigma_pred, x_pred, y)
-    x_est_cache[t] = x_meas.T
-    sigma_pred, x_pred = time_update(sigma_meas, x_meas)
-    w = np.random.normal(0, np.sqrt(Q))
-    x_true = A @ x_true + G * w
-    x_true_cache[t+1] = x_true.T
+for t in range(N - 1):
+    y = meas_fn(x_true, np.random.normal(0, 1.5, nb))
+    P, x_hat = measurement_update(P, x_hat, y)
+    est_log[t] = x_hat.T
+    P, x_hat = time_update(P, x_hat)
+    x_true = A @ x_true + G * np.random.normal(0, np.sqrt(Q))
+    true_log[t + 1] = x_true.T
 
-# 画图
-t_axis = np.arange(n_sim) * h
+# plots
+t_ax = np.arange(N) * h
 fig, axes = plt.subplots(2, 1, figsize=(10, 6))
-axes[0].plot(t_axis, x_true_cache[:, 0], 'b-', label='True position')
-axes[0].plot(t_axis[:-1], x_est_cache[:, 0], 'r--', label='EKF estimate')
-axes[0].set_ylabel('Position (m)')
+
+axes[0].plot(t_ax, true_log[:, 0], 'b', label='true')
+axes[0].plot(t_ax[:-1], est_log[:, 0], 'r--', label=r'$\hat{x}_{t|t}$')
+axes[0].set_ylabel('position (m)')
 axes[0].legend()
-axes[0].set_title('Step 1: 1D EKF')
-axes[1].plot(t_axis, x_true_cache[:, 1], 'b-', label='True velocity')
-axes[1].plot(t_axis[:-1], x_est_cache[:, 1], 'r--', label='EKF estimate')
-axes[1].set_ylabel('Velocity (m/s)')
-axes[1].set_xlabel('Time (s)')
+axes[0].set_title('Step 1 — 1D EKF')
+
+axes[1].plot(t_ax, true_log[:, 1], 'b', label='true')
+axes[1].plot(t_ax[:-1], est_log[:, 1], 'r--', label=r'$\hat{v}_{t|t}$')
+axes[1].set_ylabel('velocity (m/s)')
+axes[1].set_xlabel('time (s)')
 axes[1].legend()
+
 plt.tight_layout()
 plt.show()
 
-print(f"平均位置误差: {np.mean(np.abs(x_true_cache[:-1,0] - x_est_cache[:,0])):.3f} m")
+err = np.abs(true_log[:-1, 0] - est_log[:, 0])
+print(f'mean position error: {np.mean(err):.3f} m')
