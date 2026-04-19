@@ -45,9 +45,9 @@ Open and run all cells in `ekf.ipynb`
 | Process noise Q | diag(0.5, 0.003) |
 
 ---
-
+  
 ## Branch Structure
 
 - `main` — final merged version
 - `ChenhuiCui` — Member A development branch  
-- `member-B-Weiting-Wu` — Member B development branch
+- `member-B-Weiting-Wu` — Member B development branch 
