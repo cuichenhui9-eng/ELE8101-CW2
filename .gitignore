@@ -4,3 +4,7 @@ anaconda_projects/
 Untitled.ipynb
 .DS_Store
 Untitled.ipynb
+
+# Jupyter / Anaconda local junk
+.ipynb_checkpoints/
+anaconda_projects/
