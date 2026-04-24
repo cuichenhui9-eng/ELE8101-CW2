@@ -12,7 +12,7 @@
 
 | File | Member | Description |
 |---|---|---|
-| `modelling.ipynb` | A | Track geometry (A1), vehicle motion model (A2), beacon placement (A3), noise validation (A4), sensor bias handling (A5) |
+| `modelling_ChenhuiCui.ipynb` | A | Track geometry (A1), vehicle motion model (A2), beacon placement (A3), noise validation (A4), sensor bias handling (A5) |
 | `ekf.ipynb` | B | EKF implementation and simulation (B1–B4) |
 | `figures/` | Both | Generated plots referenced in the report |
 
@@ -25,7 +25,7 @@ pip install numpy matplotlib casadi
 
 ### Member A — Modelling
 
-Open and run all cells in `modelling.ipynb` (top-to-bottom).
+Open and run all cells in `modelling_ChenhuiCui.ipynb` (top-to-bottom).
 All figures are saved to `figures/` and referenced in the report.
 
 ### Member B — EKF
