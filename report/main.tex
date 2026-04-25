@@ -33,39 +33,6 @@
 \usepackage{float}
 \graphicspath{{../figures/}{figures/}}
 
-%---------------- Colours and contribution boxes --------------
-% Note: BasicTeX does not ship microtype / enumitem / tcolorbox /
-% framed. The colour-box environments below use only xcolor and the
-% LaTeX kernel's lrbox + minipage primitives, so they compile in
-% vanilla BasicTeX. To upgrade to a rounded colour-frame version,
-% install tcolorbox via:
-%   sudo tlmgr install tcolorbox
-\usepackage{xcolor}
-\definecolor{interfaceblue}{HTML}{2a6fa5}
-\definecolor{interfacebg}{HTML}{f0f6fa}
-\definecolor{novelorange}{HTML}{b58900}
-\definecolor{novelbg}{HTML}{fdf6e3}
-
-\newsavebox{\contribbox}
-
-\newenvironment{interfacebox}%
-  {\par\medskip\noindent
-   \setlength{\fboxsep}{6pt}%
-   \begin{lrbox}{\contribbox}%
-   \begin{minipage}{\dimexpr\textwidth-2\fboxsep-2\fboxrule\relax}}%
-  {\end{minipage}\end{lrbox}%
-   \noindent\fcolorbox{interfaceblue}{interfacebg}{\usebox{\contribbox}}%
-   \par\medskip}
-
-\newenvironment{novelbox}%
-  {\par\medskip\noindent
-   \setlength{\fboxsep}{6pt}%
-   \begin{lrbox}{\contribbox}%
-   \begin{minipage}{\dimexpr\textwidth-2\fboxsep-2\fboxrule\relax}}%
-  {\end{minipage}\end{lrbox}%
-   \noindent\fcolorbox{novelorange}{novelbg}{\usebox{\contribbox}}%
-   \par\medskip}
-
 %---------------- Verbatim helper -----------------------------
 \newcommand{\code}[1]{\texttt{#1}}
 
@@ -131,85 +98,6 @@ symbolic verification of the augmented measurement function. Source
 code and complete simulation outputs are available at
 \url{https://github.com/cuichenhui9-eng/ELE8101-CW2}.
 \end{abstract}
-
-%==============================================================
-\section*{Scope and Individual Contributions}
-\addcontentsline{toc}{section}{Scope and Individual Contributions}
-
-This report is the joint output of two authors: Member~A
-(\textbf{Chenhui Cui}) is responsible for the system-modelling component
-(Section~\ref{sec:modelling}), and Member~B (\textbf{Weiting Wu}) is
-responsible for the estimator design and its experimental validation
-(Sections~\ref{sec:ekf}--\ref{sec:complexity}). Quantities and design
-decisions imported from the modelling component into the estimator
-chapters are flagged in the \emph{blue interface boxes} below;
-contributions specific to the estimator chapters are flagged in the
-\emph{yellow novelty boxes}. This convention makes the division of
-responsibility auditable and the collaboration structure transparent.
-
-\begin{interfacebox}
-\textbf{Interface from Member~A (system modelling).}
-The following quantities enter the estimator chapters as fixed inputs,
-produced and justified in Section~\ref{sec:modelling}:
-\begin{itemize}
-  \item linearised dynamics matrices $A_0$, $G$ at the nominal operating
-        point with $\phi_s=0.999$, $\phi_1=0.9$, $k_2=10$;
-  \item process noise $Q=\mathrm{diag}(0.5, 0.002)$ and measurement
-        noise $\sigma_y=1.5$~m ($R=2.25\,\mathrm{m}^2 \cdot I_5$);
-  \item sampling period $h=0.01$~s ($100$~Hz), track length
-        $L=426.71$~m, half-width $w=2.0$~m;
-  \item the five GDOP-optimised beacon coordinates of
-        Section~\ref{sec:beacon}; mean
-        $\overline{\mathrm{GDOP}}=0.9193$ giving the single-shot
-        Cram\'er--Rao bound
-        $\sigma_y\cdot\overline{\mathrm{GDOP}}=1.379$~m;
-  \item Lyapunov steady-state standard deviations
-        $\sigma_{\ell,\infty}=0.032$~m,
-        $\sigma_{v_\ell,\infty}=0.103$~m/s,
-        $\sigma_{v_s,\infty}=2.53$~m/s, used as theoretical references
-        for the EKF errors;
-  \item simulator Monte-Carlo bounds (Table~\ref{tab:mc}):
-        $\max|\ell|=0.109$~m, $\max|v_\ell|=0.335$~m/s,
-        $\max v_s=20.08$~m/s, $\min v_s=5.05$~m/s;
-  \item the bound-respecting nonlinear truth model $f(\cdot)$ of
-        Section~\ref{sec:motion}, used in Section~\ref{sec:bdry};
-  \item the state-augmentation formulation
-        $z_\text{aug}=[s,\ell,v_s,v_\ell,b_1,\dots,b_5]^{\!\top}$ of
-        Section~\ref{sec:bias} with block-diagonal
-        $A_\text{aug}, G_\text{aug}$ and the noise-free
-        $h_\text{aug}$ verification precision $6\times10^{-15}$~m.
-\end{itemize}
-\end{interfacebox}
-
-\begin{novelbox}
-\textbf{Estimator-side contributions} (developed in
-Sections~\ref{sec:ekf}--\ref{sec:complexity}, complementary to the
-modelling component):
-\begin{itemize}
-  \item EKF implementation in \code{estimator.ipynb} using CasADi
-        automatic differentiation
-        (Section~\ref{sec:ekf-formulation});
-  \item internal-model alignment correction for the longitudinal
-        autoregressive drift identified during cross-notebook
-        debugging (Section~\ref{sec:internal-model});
-  \item Normalized Innovation Squared (NIS) consistency check across
-        $100$ Monte-Carlo trials, providing estimator-side verification
-        of Member~A's $Q$-matrix selection
-        (Section~\ref{sec:nis});
-  \item EKF beacon-count ablation reproducing the monotonic degradation
-        predicted by Member~A's geometric analysis
-        (Section~\ref{sec:ablation});
-  \item estimator-side near-boundary stress test using Member~A's full
-        nonlinear truth model $f(\cdot)$
-        (Section~\ref{sec:bdry});
-  \item Moving Horizon Estimator (MHE) implementation following the
-        Bayesian framework of the course material, with quantitative
-        real-time-feasibility analysis (Section~\ref{sec:mhe});
-  \item $9$-state augmented EKF providing noise-domain bias-recovery
-        evidence to complement Member~A's symbolic measurement-function
-        verification (Section~\ref{sec:bias-aug}).
-\end{itemize}
-\end{novelbox}
 
 %==============================================================
 \section{System Modelling}
@@ -609,13 +497,33 @@ the linear model cannot rule out a priori
 \section{Extended Kalman Filter}
 \label{sec:ekf}
 
+The estimator chapters that follow build directly on the modelling
+component of Section~\ref{sec:modelling}: the linearised dynamics
+matrices $A_0$, $G$ at the nominal operating point and the
+process/measurement noise covariances $Q=\mathrm{diag}(0.5, 0.002)$
+and $R=2.25\,\mathrm{m}^2 \cdot I_5$ (Section~\ref{sec:motion}); the
+five GDOP-optimised beacon coordinates and the resulting
+Cram\'er--Rao lower bound
+$\sigma_y\cdot\overline{\mathrm{GDOP}}=1.379$~m on single-shot
+position RMSE (Section~\ref{sec:beacon}); the Lyapunov steady-state
+standard deviations $\sigma_{\ell,\infty}=0.032$~m,
+$\sigma_{v_\ell,\infty}=0.103$~m/s, $\sigma_{v_s,\infty}=2.53$~m/s
+used here as theoretical references (Section~\ref{sec:bias}); the
+augmented-state formulation
+$z_\text{aug}=[s,\ell,v_s,v_\ell,b_1,\dots,b_5]^{\!\top}$ with its
+noise-free $h_\text{aug}$ verification (Section~\ref{sec:bias},
+implemented numerically in Section~\ref{sec:bias-aug}); and the
+full nonlinear truth model $f(\cdot)$ of Section~\ref{sec:motion},
+used in the near-boundary stress test of
+Section~\ref{sec:bdry}.
+
 \subsection{EKF Formulation}
 \label{sec:ekf-formulation}
 
 The state transition function is nonlinear due to the bound-respecting
 dynamics of Section~\ref{sec:motion}, but at the nominal operating
 point ($\ell=0$, $v_\ell=0$) its Jacobian reduces to the linear matrix
-$A_0$ described in the interface box, so no linearisation of the
+$A_0$, so no linearisation of the
 dynamics is required during ordinary operation. The measurement
 function $h(z)$ returns the Euclidean distance from the vehicle to each
 of the five beacons, which is a nonlinear function of arc-length $s$
@@ -821,13 +729,11 @@ distribution with $n_y=5$ degrees of freedom (the measurement
 dimension), giving expected mean $\mathbb{E}[\mathrm{NIS}]=5$ and a
 $95\%$ confidence interval of $[0.83, 12.83]$.
 
-\begin{novelbox}
 This estimator-side consistency check is independent of and
 complementary to the simulator-side scan of Section~\ref{sec:noise}:
 the two analyses approach the same $Q$-matrix selection from opposite
-directions, and agreement between them (shown below) provides much
+directions, and agreement between them (shown below) provides
 stronger evidence than either could on its own.
-\end{novelbox}
 
 NIS samples were collected from all $100$ Monte-Carlo trials
 (excluding the warm-up window), giving approximately $380{,}000$
@@ -871,12 +777,10 @@ $1.571$~m ($0\%$ coverage); $N=3$ yields $1.816$~m. The trend is
 monotonic, but the geometric analysis bounds the single-shot estimate
 only and does not directly predict recursive EKF performance.
 
-\begin{novelbox}
 This section provides the empirical EKF errors at each beacon count,
 directly complementing Table~\ref{tab:gdop}: the geometric analysis
 predicts the bound, this experiment measures how close the recursive
 EKF gets to it.
-\end{novelbox}
 
 For each of three configurations --- $N=5$ (baseline), $N=4$ (beacon
 $3$ removed), $N=3$ (beacons $3$ and $5$ removed) --- $30$
@@ -968,16 +872,14 @@ position-dependent stiffness $k(\ell)$ diverges as $|\ell|\to2$~m,
 so the EKF's linear prediction step (which uses $A_0$ at the nominal
 point) is most stressed in this regime.
 
-\begin{novelbox}
-This section provides the estimator-side counterpart to the
+The present section provides the estimator-side counterpart to the
 simulator-side stress test, completing a closed-loop validation:
 Section~\ref{sec:motion} confirms the dynamics keeps the vehicle on
-track; the present section confirms the EKF can find the vehicle
-there. The truth model used in this experiment is the full nonlinear
+track; this section confirms the EKF can find the vehicle there.
+The truth model used in this experiment is the full nonlinear
 $f(\cdot)$ of Section~\ref{sec:motion} (smooth $C^{\infty}$
 saturations, no post-hoc clipping), guaranteeing consistency between
 the modelling component and the simulator code used here.
-\end{novelbox}
 
 The conditions used here differ from the adversarial impulse of
 Section~\ref{sec:motion} ($\ell_0=1.5$, $v_{\ell,0}=2.0$~m/s)
@@ -1059,12 +961,10 @@ briefly traverses the strongly nonlinear region.
 \section{Comparison with Moving Horizon Estimation}
 \label{sec:mhe}
 
-\begin{novelbox}
-A complete Moving Horizon Estimator (MHE) implementation and the
-associated real-time-feasibility analysis establish the EKF as the
-correct engineering choice for the problem-statement $100$~Hz
-real-time requirement.
-\end{novelbox}
+A complete Moving Horizon Estimator (MHE) implementation is now
+presented alongside the associated real-time-feasibility analysis,
+establishing the EKF as the correct engineering choice for the
+problem-statement $100$~Hz real-time requirement.
 
 The MHE is implemented following the Bayesian full-information
 estimation framework presented in the course lecture
@@ -1155,13 +1055,12 @@ $e_{v_\ell}\notin\mathrm{null}(\mathcal{O})$) and the noise-free
 measurement-function verification (recovery to within
 $6\times10^{-15}$~m) are also developed in Section~\ref{sec:bias}.
 
-\begin{novelbox}
-This section provides the corresponding noise-domain verification: the
-$9$-state augmented EKF is implemented and run on the simulator output
-with realistic measurement noise ($\sigma_y=1.5$~m) and injected
-biases. Section~\ref{sec:bias} establishes mathematical correctness;
-the present section establishes engineering viability under noise.
-\end{novelbox}
+The present section provides the corresponding noise-domain
+verification: the $9$-state augmented EKF is implemented and run on
+the simulator output with realistic measurement noise
+($\sigma_y=1.5$~m) and injected biases.
+Section~\ref{sec:bias} establishes mathematical correctness; this
+section establishes engineering viability under noise.
 
 The augmented measurement function is
 \begin{equation}
@@ -1449,18 +1348,48 @@ Member~B. EKF and MHE work items were tracked in Issue~\#3 with
 checkboxes for B1--B4.
 
 \subsubsection*{A.4 Individual contributions}
-\textbf{Member A (Chenhui Cui)}: Section~\ref{sec:modelling}
-in full --- track geometry (A1), bound-respecting nonlinear vehicle
-motion model (A2), beacon placement optimisation including
-failure-mode and Monte-Carlo sensitivity analyses (A3), noise
-parameter validation (A4), state augmentation for sensor bias (A5).
-\textbf{Member B (Weiting Wu)}: Sections~\ref{sec:ekf} and
-\ref{sec:mhe} in full --- EKF formulation and CasADi-based
-implementation (B1), Monte-Carlo evaluation (B2), bias injection test
-(B3), MHE implementation and EKF/MHE comparison (B4). All commits on
-the \texttt{ChenhuiCui} branch, as well as commits to \texttt{main}
-after 1~April 2026, are correctly attributed to
-\texttt{cuichenhui9-eng}.
+\textbf{Member A (Chenhui Cui)} authored
+Section~\ref{sec:modelling} in full --- track geometry
+(Section~\ref{sec:geometry}), bound-respecting nonlinear vehicle
+motion model (Section~\ref{sec:motion}), beacon placement
+optimisation including failure-mode and Monte-Carlo sensitivity
+analyses (Section~\ref{sec:beacon}), noise-parameter validation
+(Section~\ref{sec:noise}), and the state-augmentation formulation
+(Section~\ref{sec:bias}). Member~A also provided the mathematical
+foundations underpinning several estimator-side analyses: the
+Fisher-information / Cram\'er--Rao derivation that frames
+Section~\ref{sec:mc} Comparison~1; the Lyapunov steady-state
+covariance solver giving the theoretical references in Comparison~2;
+the augmented-state matrices $A_\text{aug}$, $G_\text{aug}$,
+$Q_\text{aug}$, the augmented measurement function $h_\text{aug}$
+and the rank-$8$ observability analysis that
+Section~\ref{sec:bias-aug} implements numerically; and the
+beacon-installation-error and single-beacon-failure analyses that
+the count ablation of Section~\ref{sec:ablation} empirically
+validates.
+
+\textbf{Member B (Weiting Wu)} authored
+Sections~\ref{sec:ekf}--\ref{sec:complexity}: the EKF formulation
+and CasADi-based implementation, the internal-model alignment
+correction, the single-run validation, the $100$-trial Monte-Carlo
+study, the Normalized Innovation Squared consistency check, the
+beacon-count ablation, the near-boundary stress test under the
+nonlinear truth model, the Moving Horizon Estimator implementation
+and real-time-feasibility comparison, the $9$-state
+bias-augmented EKF noise-domain verification, and the
+computational-complexity analysis. Member~B's implementation builds
+directly on Member~A's mathematical formulations for
+Sections~\ref{sec:mc} (Comparisons 1 and 2) and
+\ref{sec:bias-aug}.
+
+\textbf{Joint contributions}: the abstract; the Conclusion
+(Section~\ref{sec:conclusion}); the AI Usage Statement; this
+appendix; the merged bibliography; and \code{README.md},
+\code{AUTHORS.md} and \code{.mailmap} in the repository root.
+
+All commits on the \texttt{ChenhuiCui} branch and commits to
+\texttt{main} after 1~April 2026 are correctly attributed to
+\texttt{cuichenhui9-eng} via \code{.mailmap}.
 
 \subsubsection*{A.5 Team reflection}
 What went well: (i) early definition of an explicit interface between
