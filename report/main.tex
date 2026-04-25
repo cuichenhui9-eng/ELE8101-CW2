@@ -22,14 +22,19 @@
 \setmainfont{Times New Roman}
 
 %---------------- Maths ---------------------------------------
-\usepackage{amsmath,amssymb}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{bm}
 
 %---------------- Tables / figures ----------------------------
 \usepackage{graphicx}
 \usepackage{booktabs}
+\usepackage{array}
 \usepackage{caption}
 \usepackage{float}
 \graphicspath{{../figures/}{figures/}}
+
+%---------------- Verbatim helper -----------------------------
+\newcommand{\code}[1]{\texttt{#1}}
 
 %---------------- Float layout tuning -------------------------
 % Let figures fill more of the page, be placed here whenever
@@ -78,11 +83,19 @@ Geometric Dilution of Precision (GDOP) minimisation with a greedy
 search algorithm, validates all noise parameters through systematic
 Monte-Carlo studies, and proposes state augmentation for bias-robust
 estimation. The estimator component (Member~B) implements the
-nonlinear EKF using CasADi and validates it in simulation. The
-Lyapunov steady-state covariance and the Fisher information lower
-bound on positioning error provide closed-form benchmarks for the
-estimator's best-case accuracy. Source code and complete simulation
-outputs are available at
+nonlinear EKF using CasADi automatic differentiation and validates it
+through five complementary lines of evidence. Across $100$ Monte-Carlo
+trials the EKF achieves a mean arc-length error of $0.247$~m,
+approximately $5.6$ times below the single-shot Cram\'er--Rao bound,
+and passes a Normalized Innovation Squared consistency check
+(empirical mean $4.99$ versus theoretical $5.00$). A Moving Horizon
+Estimator implementation is shown to be $187\times$ over the real-time
+budget at $100$~Hz, establishing the EKF as the correct engineering
+choice. A $9$-state augmented EKF recovers injected sensor biases of
+magnitude up to $0.8$~m to within $0.024$~m, providing the
+noise-domain verification that complements Member~A's noise-free
+symbolic verification of the augmented measurement function. Source
+code and complete simulation outputs are available at
 \url{https://github.com/cuichenhui9-eng/ELE8101-CW2}.
 \end{abstract}
 
@@ -484,20 +497,723 @@ the linear model cannot rule out a priori
 \section{Extended Kalman Filter}
 \label{sec:ekf}
 
-\textit{[Member B: Weiting Wu --- to be completed.]}
+The estimator chapters that follow build directly on the modelling
+component of Section~\ref{sec:modelling}: the linearised dynamics
+matrices $A_0$, $G$ at the nominal operating point and the
+process/measurement noise covariances $Q=\mathrm{diag}(0.5, 0.002)$
+and $R=2.25\,\mathrm{m}^2 \cdot I_5$ (Section~\ref{sec:motion}); the
+five GDOP-optimised beacon coordinates and the resulting
+Cram\'er--Rao lower bound
+$\sigma_y\cdot\overline{\mathrm{GDOP}}=1.379$~m on single-shot
+position RMSE (Section~\ref{sec:beacon}); the Lyapunov steady-state
+standard deviations $\sigma_{\ell,\infty}=0.032$~m,
+$\sigma_{v_\ell,\infty}=0.103$~m/s, $\sigma_{v_s,\infty}=2.53$~m/s
+used here as theoretical references (Section~\ref{sec:bias}); the
+augmented-state formulation
+$z_\text{aug}=[s,\ell,v_s,v_\ell,b_1,\dots,b_5]^{\!\top}$ with its
+noise-free $h_\text{aug}$ verification (Section~\ref{sec:bias},
+implemented numerically in Section~\ref{sec:bias-aug}); and the
+full nonlinear truth model $f(\cdot)$ of Section~\ref{sec:motion},
+used in the near-boundary stress test of
+Section~\ref{sec:bdry}.
+
+\subsection{EKF Formulation}
+\label{sec:ekf-formulation}
+
+The state transition function is nonlinear due to the bound-respecting
+dynamics of Section~\ref{sec:motion}, but at the nominal operating
+point ($\ell=0$, $v_\ell=0$) its Jacobian reduces to the linear matrix
+$A_0$, so no linearisation of the
+dynamics is required during ordinary operation. The measurement
+function $h(z)$ returns the Euclidean distance from the vehicle to each
+of the five beacons, which is a nonlinear function of arc-length $s$
+and lateral offset $\ell$ through the piecewise track geometry of
+Section~\ref{sec:geometry}. The standard Kalman filter is therefore
+insufficient; an EKF that linearises $h$ at each step is required.
+
+Following the convention of the course lecture
+notebook~\cite{Sopasakis_5_ekf}, the measurement update executed when a
+measurement $y_t$ is received is
+\begin{align}
+\nu_t          &= y_t - h(\hat{z}_{t|t-1}), \label{eq:innov}\\
+S_t            &= C\,\Sigma_{t|t-1}\,C^{\!\top} + \widetilde{R},
+                  \label{eq:cov}\\
+\hat{z}_{t|t}  &= \hat{z}_{t|t-1} + \Sigma_{t|t-1} C^{\!\top} S_t^{-1}
+                  \nu_t, \label{eq:meas}\\
+\Sigma_{t|t}   &= \Sigma_{t|t-1} - \Sigma_{t|t-1} C^{\!\top} S_t^{-1}
+                  C\,\Sigma_{t|t-1}, \label{eq:sigm}
+\end{align}
+where $C=J_z h$ is the Jacobian of the measurement function with
+respect to the state and
+$\widetilde{R}=J_v h\cdot R\cdot(J_v h)^{\!\top}$ is the measurement
+noise covariance in the linearised coordinates. The time update
+propagates the estimate forward,
+\begin{align}
+\hat{z}_{t+1|t}  &= A_0\,\hat{z}_{t|t}, \label{eq:tpred}\\
+\Sigma_{t+1|t}   &= A_0\,\Sigma_{t|t}\,A_0^{\!\top} + \overline{Q},
+                    \label{eq:tsigm}
+\end{align}
+with $\overline{Q}=G\,Q\,G^{\!\top}$. The variable names
+(\code{x\_t\_pred}, \code{sigma\_t\_pred}, \code{x\_t\_meas},
+\code{sigma\_t\_meas}) and numbered loop comments follow the course
+notebook's convention exactly so that the implementation is auditable
+against the lecture material. The Jacobians are computed by automatic
+differentiation using CasADi~\cite{Andersson2019}, with the measurement
+function built piecewise-symbolically via \code{cs.if\_else} to handle
+the four track segments (two straights and two arcs) defined in
+Section~\ref{sec:geometry}. This avoids the discretisation error of
+finite-difference methods and remains exact across segment transitions.
+The setup layer is summarised in Figure~\ref{fig:cell1}.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.78\textwidth]{cell1_output.png}
+\caption{Setup layer (Cell~1 of \code{estimator.ipynb}). Track
+geometry, anchor coordinates, $A_0$, $G$, $Q$, $R$, the CasADi
+symbolic functions $h$, $j_{hx}$, $j_{hv}$ and the EKF primitives
+\code{measurement\_update} and \code{time\_update} are configured using
+values imported from the modelling component. This layer is reused by
+all subsequent cells without modification.}
+\label{fig:cell1}
+\end{figure}
+
+\subsection{Internal Model Alignment}
+\label{sec:internal-model}
+
+The longitudinal velocity dynamics specified by the simulator are
+autoregressive of the first order, centred at the nominal speed
+$v_{s,\mathrm{tgt}}=10$~m/s rather than zero,
+\begin{equation}
+v_{s,t+1}=\phi_s\,v_{s,t}+(1-\phi_s)\,v_{s,\mathrm{tgt}}+w_{s,t}.
+\label{eq:vsdyn}
+\end{equation}
+The constant term $(1-\phi_s)\,v_{s,\mathrm{tgt}}$ in
+\eqref{eq:vsdyn} is not part of the linear state transition matrix
+$A_0$ as documented in Section~\ref{sec:motion} and must therefore be
+added explicitly to the deterministic part of the EKF time update.
+Failing to do so yields a small but persistent bias in the longitudinal
+velocity estimate. This subtle inconsistency between the simulator and
+the linear time-update was identified during cross-notebook debugging
+by comparing the mean velocity trajectories produced by the simulator
+and the EKF predictor. The correction added to the predictor restores
+filter consistency; the NIS check in Section~\ref{sec:nis} confirms
+the correction is statistically valid.
+
+\subsection{Single-Run Simulation}
+\label{sec:single-run}
+
+A representative single-lap simulation was conducted over $4300$ time
+steps (approximately $43$~s at the nominal speed). The initial state
+was $z_0=[0,0,10,0]^{\!\top}$ with diffuse initial covariance
+$P_0=\mathrm{diag}(100,1,25,0.5)$. The design parameters
+$Q=\mathrm{diag}(0.5,0.002)$ and $R=2.25\,\mathrm{m}^2$ are those
+validated by the noise-parameter scan of Section~\ref{sec:noise}.
+Results are shown in Figure~\ref{fig:cell2}.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{cell2_output.png}
+\caption{Single-run EKF over one full lap (Cell~2). Left: estimated
+trajectory (red dashed) overlaid on the true trajectory (blue solid);
+the five beacons are shown as stars. Centre: lateral-position tracking
+with the $\pm2$~m boundary. Right: longitudinal-velocity tracking.
+Mean arc-length error $0.244$~m, mean lateral error $0.031$~m, mean
+velocity error $2.024$~m/s.}
+\label{fig:cell2}
+\end{figure}
+
+The estimated trajectory closely follows the true path throughout both
+straight sections and the asymmetric arcs, and the lateral estimate
+remains within the $\pm2$~m boundary. A brief transient is visible in
+the first $0.5$~s as the covariance converges from the diffuse prior.
+The mean longitudinal velocity error of $2.024$~m/s is larger in
+absolute terms than the position errors; this reflects both the Kalman
+filter's one-step tracking delay under a process-noise variance of
+$q_s=0.5$ and, more fundamentally, the Lyapunov bound established in
+Section~\ref{sec:bias}: $\sigma_{v_s,\infty}=2.53$~m/s. The observed
+value is approximately $80\%$ of this bound, consistent with a
+near-optimal filter. The arc-length error of $0.244$~m over a track
+perimeter of $426.7$~m represents a relative accuracy of $0.06\%$;
+residual velocity error does not propagate into systematic position
+bias.
+
+\subsection{Monte-Carlo Statistical Validation}
+\label{sec:mc}
+
+To verify that the observed performance is not the result of a single
+favourable noise realisation, a Monte-Carlo study was conducted with
+$100$ independent trials, each one full lap in length. The first
+$5$~s ($500$ time steps) of each trial were excluded from the
+statistics to separate steady-state performance from the
+covariance-convergence transient. Results are summarised in
+Table~\ref{tab:mc-ekf} and Figure~\ref{fig:cell3}.
+
+\begin{table}[!htbp]
+\centering
+\caption{EKF performance statistics over $100$ Monte-Carlo trials.
+Standard deviation is computed across per-trial means. Statistics
+exclude the first $5$~s of each trial (warm-up).}
+\label{tab:mc-ekf}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Metric} & \textbf{Mean} & \textbf{Std (across trials)} &
+\textbf{Max}\\
+\midrule
+Arc-length error (m)  & $0.247$ & $0.010$ & $1.471$\\
+Lateral error (m)     & $0.025$ & $0.003$ & $0.132$\\
+Velocity error (m/s)  & $2.103$ & $0.098$ & ---\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{cell3_output.png}
+\caption{Monte-Carlo validation (Cell~3). Left and centre: histograms
+of per-trial mean arc-length and lateral errors across $100$ trials.
+Right: arc-length error as a function of time, averaged across all
+trials, with $\pm1$ standard deviation band. The orange dotted line
+marks the end of the $5$~s warm-up window.}
+\label{fig:cell3}
+\end{figure}
+
+Two independent comparisons against the modelling-side theoretical
+predictions confirm that the EKF operates near optimality.
+
+\paragraph{Comparison 1 --- against the Cram\'er--Rao lower bound.}
+The single-shot CRLB
+$\sigma_y\cdot\overline{\mathrm{GDOP}}=1.379$~m
+(Section~\ref{sec:beacon}) bounds the position RMSE achievable by an
+unbiased efficient estimator from a single set of distance
+measurements. The recursive EKF achieves a time-averaged position
+accuracy of $0.247$~m, approximately $\mathbf{5.6\times}$ better than
+the single-shot bound. This is the expected result: a Kalman filter
+under a stable linear system with informative measurements achieves an
+asymptotic covariance strictly below the per-sample CRLB by integrating
+temporal information through the process model.
+
+\paragraph{Comparison 2 --- against the Lyapunov steady-state covariance.}
+The Lyapunov analysis of Section~\ref{sec:bias} solves the
+discrete-time equation
+$P_\infty=A_\text{sub}P_\infty A_\text{sub}^{\!\top}+
+G_\text{sub}QG_\text{sub}^{\!\top}$
+for the strictly stable lateral subsystem, giving theoretical lower
+bounds $\sigma_{\ell,\infty}=0.032$~m and
+$\sigma_{v_\ell,\infty}=0.103$~m/s. The EKF's empirical mean lateral
+error of $0.025$~m is comparable to and slightly below the theoretical
+$\sigma_{\ell,\infty}=0.032$~m; the small deviation is consistent with
+finite-sample variability across trials ($0.003$~m standard deviation).
+This empirically confirms the Lyapunov calculation from the estimator
+side and demonstrates that the EKF approaches the theoretical floor on
+lateral accuracy.
+
+\subsection{NIS Consistency Check}
+\label{sec:nis}
+
+Performance metrics such as RMSE confirm that the filter is accurate
+\emph{in this run}, but they do not directly verify that the design
+covariances $Q$ and $R$ match the true noise statistics. A filter could
+achieve a low RMSE while being internally miscalibrated --- over- or
+under-confident in its own uncertainty --- and the miscalibration would
+only surface under stress. The standard diagnostic for filter
+consistency~\cite{Sopasakis_6_tutorial} is the Normalized Innovation
+Squared (NIS) test:
+\begin{equation}
+\nu_t = y_t - h(\hat{z}_{t|t-1}),\qquad
+S_t   = C\Sigma_{t|t-1}C^{\!\top}+\widetilde{R},\qquad
+\mathrm{NIS}_t = \nu_t^{\!\top}S_t^{-1}\nu_t.
+\label{eq:nis}
+\end{equation}
+If the filter is correctly tuned, $\mathrm{NIS}_t$ follows a chi-square
+distribution with $n_y=5$ degrees of freedom (the measurement
+dimension), giving expected mean $\mathbb{E}[\mathrm{NIS}]=5$ and a
+$95\%$ confidence interval of $[0.83, 12.83]$.
+
+This estimator-side consistency check is independent of and
+complementary to the simulator-side scan of Section~\ref{sec:noise}:
+the two analyses approach the same $Q$-matrix selection from opposite
+directions, and agreement between them (shown below) provides
+stronger evidence than either could on its own.
+
+NIS samples were collected from all $100$ Monte-Carlo trials
+(excluding the warm-up window), giving approximately $380{,}000$
+samples in total. The empirical distribution is compared against the
+theoretical chi-square pdf in Figure~\ref{fig:nis}.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{cell3_nis_check.png}
+\caption{NIS consistency check across the $100$-trial Monte-Carlo
+dataset. Blue histogram: empirical NIS distribution. Red curve:
+theoretical chi-square($5$) probability density function. Empirical
+mean (blue dashed) $4.99$ matches the theoretical mean (green dashed)
+$5.00$ to within $0.2\%$. Green shaded band: $95\%$ theoretical
+confidence interval $[0.83, 12.83]$; $95.0\%$ of empirical samples
+fall within this band.}
+\label{fig:nis}
+\end{figure}
+
+The agreement is essentially exact: empirical mean $4.99$ versus
+theoretical $5.00$ (relative error $0.2\%$), and $95.0\%$ of samples
+within the $95\%$ confidence band. The histogram shape is visually
+indistinguishable from the chi-square pdf across the entire range.
+The interpretation is that the filter is statistically consistent: the
+design covariances $Q$ and $R$ match the true noise statistics imposed
+by the simulator. Crucially, this provides the desired estimator-side
+independent confirmation of the noise-parameter selection: two
+independent analyses (simulator-side constraint preservation in
+Section~\ref{sec:noise} and the present estimator-side innovation
+statistics) both select $Q=\mathrm{diag}(0.5,0.002)$, strengthening
+confidence in the result.
+
+\subsection{Beacon Count Ablation}
+\label{sec:ablation}
+
+Section~\ref{sec:beacon} selects $N=5$ beacons through a GDOP-based
+geometric analysis. The corresponding Cram\'er--Rao single-shot bounds
+tabulated in Table~\ref{tab:gdop} are: $N=5$ yields $1.379$~m
+(baseline, $100\%$ track coverage at GDOP$<1$); $N=4$ yields
+$1.571$~m ($0\%$ coverage); $N=3$ yields $1.816$~m. The trend is
+monotonic, but the geometric analysis bounds the single-shot estimate
+only and does not directly predict recursive EKF performance.
+
+This section provides the empirical EKF errors at each beacon count,
+directly complementing Table~\ref{tab:gdop}: the geometric analysis
+predicts the bound, this experiment measures how close the recursive
+EKF gets to it.
+
+For each of three configurations --- $N=5$ (baseline), $N=4$ (beacon
+$3$ removed), $N=3$ (beacons $3$ and $5$ removed) --- $30$
+Monte-Carlo trials of one full lap were run with independent random
+seeds. Steady-state mean arc-length and lateral errors are reported in
+Table~\ref{tab:ablation} alongside the CRB predictions for direct
+comparison; results are visualised in Figure~\ref{fig:cell6}.
+
+\begin{table}[!htbp]
+\centering
+\caption{Beacon-count ablation: $30$-trial Monte-Carlo per
+configuration. The CRB column reproduces the corresponding
+$\sigma_y\cdot\overline{\mathrm{GDOP}}$ entries from
+Table~\ref{tab:gdop}.}
+\label{tab:ablation}
+\begin{tabular}{@{}lccc@{}}
+\toprule
+\textbf{Configuration} & \textbf{EKF arc (m)} &
+\textbf{EKF lat (m)} & \textbf{CRB (m)}\\
+\midrule
+$N=5$ (baseline)            & $0.247$ & $0.0246$ & $1.379$\\
+$N=4$ (drop $b_3$)          & $0.267$ & $0.0245$ & $1.571$\\
+$N=3$ (drop $b_3,b_5$)      & $0.298$ & $0.0246$ & $1.816$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{cell6_beacon_ablation.png}
+\caption{Beacon-count ablation (Cell~6). Left: EKF mean arc-length
+error (blue, with error bars showing $\pm1$~std across trials)
+versus the single-shot CRB (red dashed). Both curves degrade
+monotonically; EKF is approximately $5$--$6\times$ below the CRB at
+every count due to temporal information integration. Right: lateral
+error remains essentially constant ($0.0245$--$0.0246$~m) across all
+three configurations.}
+\label{fig:cell6}
+\end{figure}
+
+Three findings emerge.
+
+\textbf{First}, the EKF arc-length error degrades monotonically with
+decreasing beacon count ($0.247\to0.267\to0.298$~m), in qualitative
+agreement with the CRB prediction ($1.379\to1.571\to1.816$~m). The
+recursive EKF therefore inherits the geometric ranking established by
+the single-shot Fisher analysis.
+
+\textbf{Second}, the EKF achieves a constant absolute error margin of
+approximately $5$--$6\times$ below the CRB at every beacon count.
+Even at $N=3$, the EKF's absolute error ($0.298$~m) is well below the
+$N=5$ single-shot CRB ($1.379$~m). This is a striking quantitative
+demonstration of the value of temporal filtering relative to additional
+sensor hardware: in this problem, adding the dynamics model contributes
+more accuracy than adding a sixth or seventh beacon would.
+
+\textbf{Third}, the lateral error is essentially constant across
+configurations ($0.0245$--$0.0246$~m), in contrast to the strongly
+count-dependent arc-length error. Lateral observability depends on the
+geometric distribution of remaining beacons across the lateral
+direction, not on their count: as long as the surviving subset spans
+both sides of the centreline, the lateral component of any range
+gradient remains adequately represented. This is a finding that
+single-number GDOP averages do not surface but the recursive simulation
+does.
+
+From an engineering standpoint, even $N=3$ yields acceptable EKF
+accuracy ($0.298$~m, well below $1$~m). The case for retaining $N=5$
+is reinforced not by absolute accuracy but by robustness: $N=5$
+degrades gracefully to $N=4$ under single-beacon failure and remains
+operational, whereas $N=3$ degrading to $N=2$ produces a
+rank-deficient measurement Jacobian and renders the estimator
+infeasible. The single-beacon-failure analysis of
+Section~\ref{sec:beacon} (Figure~\ref{fig:failure}) and the present
+count ablation therefore agree on the design recommendation $N=5$.
+
+\subsection{Near-Boundary Stress Test}
+\label{sec:bdry}
+
+Section~\ref{sec:motion} includes an adversarial stress test at the
+simulator level: the bound-respecting nonlinear dynamics is integrated
+from three initial conditions to verify that the simulator's nonlinear
+spring keeps $|\ell|<2$~m in all cases. That test answers the question
+\emph{``does the simulated vehicle stay on the track?''} It does not
+answer the complementary question relevant for the estimator:
+\emph{``does the EKF still track the vehicle accurately when the
+vehicle operates near the boundary?''} The latter matters because the
+position-dependent stiffness $k(\ell)$ diverges as $|\ell|\to2$~m,
+so the EKF's linear prediction step (which uses $A_0$ at the nominal
+point) is most stressed in this regime.
+
+The present section provides the estimator-side counterpart to the
+simulator-side stress test, completing a closed-loop validation:
+Section~\ref{sec:motion} confirms the dynamics keeps the vehicle on
+track; this section confirms the EKF can find the vehicle there.
+The truth model used in this experiment is the full nonlinear
+$f(\cdot)$ of Section~\ref{sec:motion} (smooth $C^{\infty}$
+saturations, no post-hoc clipping), guaranteeing consistency between
+the modelling component and the simulator code used here.
+
+The conditions used here differ from the adversarial impulse of
+Section~\ref{sec:motion} ($\ell_0=1.5$, $v_{\ell,0}=2.0$~m/s)
+because the two tests have different goals. The
+modelling-side test stresses the dynamics with a $v_\ell$ nearly four
+times the physical $0.55$~m/s bound, to verify that the nonlinear
+spring activates in unrealistic conditions. The present test stresses
+the EKF under realistic but extreme operating conditions: vehicle
+initialised at $\ell_0=\pm1.8$~m (within $0.2$~m of the boundary)
+with $v_{\ell,0}=\pm0.3$~m/s (within the operational bound). Three
+scenarios are run, each one full lap with identical seed: A nominal
+($\ell_0=0$, $v_{\ell,0}=0$); B near $+$bound; C symmetric near
+$-$bound. Results are in Table~\ref{tab:bdy} and
+Figure~\ref{fig:cell7}.
+
+\begin{table}[!htbp]
+\centering
+\caption{Near-boundary stress test under the nonlinear truth model
+$f(\cdot)$: steady-state EKF lateral accuracy and maximum lateral
+excursion under three initial conditions.}
+\label{tab:bdy}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Scenario} & \textbf{$\ell_0$ (m)} & \textbf{$v_{\ell,0}$ (m/s)}
+& \textbf{Mean lat err (m)} & \textbf{Max $|\ell|$ (m)}\\
+\midrule
+A: nominal       & $0.0$  & $0.0$  & $0.0186$ & $0.068$\\
+B: near $+$bound & $+1.8$ & $+0.3$ & $0.0207$ & $1.803$\\
+C: near $-$bound & $-1.8$ & $-0.3$ & $0.0217$ & $1.803$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{cell7_boundary_test.png}
+\caption{Near-boundary stress test (Cell~7) using the nonlinear truth
+model $f(\cdot)$. Left: lateral position trajectories (true: solid;
+estimated: dashed) for scenarios A, B, C. Vehicles in B and C return
+to centreline within approximately $5$~s due to the nonlinear spring.
+Centre: $|$lateral error$|$ over time on log scale. Right: bar chart
+of steady-state mean lateral error per scenario.}
+\label{fig:cell7}
+\end{figure}
+
+All three scenarios yield steady-state lateral accuracy of
+$0.0186$--$0.0217$~m, all at the centimetre level. The maximum
+excursion under the most aggressive initial condition (scenario~B) is
+$1.803$~m, leaving a $0.197$~m safety margin to the physical
+$\pm2$~m bound. Two conclusions follow.
+
+\textbf{First}, the present $1.803$~m maximum is consistent with the
+modelling-side near-outer-wall test ($\ell_0=1.8$,
+$v_{\ell,0}=0.5$~m/s), which reports a comparable maximum well within
+the bound. The two tests use different initial $v_\ell$ values but
+both confirm that the nonlinear spring physically returns the vehicle
+from a near-boundary start. The complementary observation here is that
+the EKF tracks this centring transient with negligible lateral error:
+in the first $5$~s the true lateral state changes by approximately
+$1.8$~m, yet the dashed (estimated) and solid (true) curves overlay
+almost perfectly. Over the unrestricted $100$-trial Monte-Carlo of
+Section~\ref{sec:mc} (centre-initialised vehicles), the
+modelling-side bounds were $\max|\ell|=0.109$~m and
+$\max|v_\ell|=0.335$~m/s; vehicles in normal operation therefore stay
+far from the boundary and the present stress test is engineering
+insurance for the rare case where they do not.
+
+\textbf{Second}, the slight ordering A~$<$~B~$<$~C
+($0.0186<0.0207<0.0217$~m) reflects the brief excursion through the
+high-stiffness region $|\ell|\approx1$ during the centring transient,
+where the linearisation $A_0$ at $\ell=0$ is least accurate. The
+increase is at the millimetre level and recovers within the warm-up
+window. This confirms that the EKF's Jacobian-based measurement update
+(evaluated at the current estimate via CasADi at every step) dominates
+the prediction-step linearisation error, even when the simulator
+briefly traverses the strongly nonlinear region.
 
 %==============================================================
-\section{MHE and Comparison}
+\section{Comparison with Moving Horizon Estimation}
 \label{sec:mhe}
 
-\textit{[Member B: Weiting Wu --- to be completed.]}
+A complete Moving Horizon Estimator (MHE) implementation is now
+presented alongside the associated real-time-feasibility analysis,
+establishing the EKF as the correct engineering choice for the
+problem-statement $100$~Hz real-time requirement.
+
+The MHE is implemented following the Bayesian full-information
+estimation framework presented in the course lecture
+notebook~\cite{Sopasakis_2_bayesian_fie}, which solves a constrained
+optimisation problem at each time step, minimising the Bayesian
+negative log-likelihood over a sliding window of $M$ most recent
+measurements,
+\begin{equation}
+\min_{\bm{x}_{0:M},\,\bm{w}_{0:M-1}}
+\;\ell_{x_0}(x_0)
++\sum_{\tau=0}^{M-1}\ell_w(w_\tau)
++\sum_{\tau=0}^{M}\ell_v\!\bigl(y_\tau-h(x_\tau)\bigr),
+\label{eq:mhe}
+\end{equation}
+subject to the dynamics $x_{\tau+1}=A_0 x_\tau+G w_\tau$ and hard
+state bounds $\ell\in[-2,2]$~m and $v_s\in[0,25]$~m/s. The three cost
+components $\ell_{x_0}$, $\ell_w$, $\ell_v$ correspond to the arrival
+cost, process-noise penalty and measurement-residual penalty used in
+the course notebook. The key theoretical advantage over the EKF is the
+ability to enforce the state bounds exactly through the optimisation,
+rather than relying on the bound-respecting dynamics in the simulator.
+
+The optimisation was solved using SLSQP from
+SciPy~\cite{Virtanen2020} with $M=10$, giving a decision variable of
+dimension $64$ and $40$ equality constraints. The arrival cost uses
+the previous MHE output as mean with a fixed diagonal prior covariance
+(self-bootstrapping). Results are shown in Table~\ref{tab:mhe} and
+Figure~\ref{fig:cell4}.
+
+\begin{table}[!htbp]
+\centering
+\caption{EKF versus MHE. The MHE is approximately $187\times$ over the
+$10$~ms sampling budget at $100$~Hz.}
+\label{tab:mhe}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+\textbf{Estimator} & \textbf{Mean arc (m)} & \textbf{Mean lat (m)} &
+\textbf{Solve time (ms)} & \textbf{Real-time at $100$~Hz}\\
+\midrule
+EKF (this report)  & $0.247$ & $0.025$ & $<1$    & Yes\\
+MHE ($M=10$)       & $0.318$ & $0.226$ & $1868$  & No\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{cell4_output.png}
+\caption{MHE performance and computation time (Cell~4). Left:
+estimated trajectory over the $N=500$ step window. Centre: lateral
+position estimate, visibly noisier than the EKF. Right: per-step MHE
+solve time on log scale with the $10$~ms sampling budget (red dashed
+line); mean solve time $1868$~ms exceeds the budget by a factor of
+$187$.}
+\label{fig:cell4}
+\end{figure}
+
+The MHE achieves comparable arc-length accuracy ($0.318$~m) but
+markedly worse lateral accuracy ($0.226$~m, nearly ten times larger
+than the EKF). More fundamentally, the mean MHE solve time of
+$1868$~ms exceeds the $10$~ms sampling budget by a factor of $187$,
+rendering MHE as implemented incompatible with real-time operation at
+$100$~Hz. The EKF requires only matrix multiplications and a
+$5\times5$ linear solve per step, completing in less than $1$~ms.
+On these grounds the EKF is selected as the primary estimator. MHE
+could become competitive with a problem-specific QP solver exploiting
+the banded horizon structure, but this is outside the scope of the
+current work. The conclusion is that, for this problem, the additional
+structural advantage MHE offers (hard bound enforcement) is already
+provided implicitly by the bound-respecting dynamics of
+Section~\ref{sec:motion}, so MHE's theoretical benefit does not
+translate to measurable improvement here.
+
+%==============================================================
+\section{Bias-Augmented EKF: Implementation and Verification}
+\label{sec:bias-aug}
+
+The problem statement requires a discussion of how the estimator
+handles sensor bias. Section~\ref{sec:bias} derives the theoretical
+formulation: an augmented state
+$z_\text{aug}=[s,\ell,v_s,v_\ell,b_1,\dots,b_5]^{\!\top}\in
+\mathbb{R}^9$ with block-diagonal $A_\text{aug}$, $G_\text{aug}$,
+$Q_\text{aug}$ matrices, following the state-augmentation approach of
+the course lecture notebook~\cite{Sopasakis_4_kalman_variants} and
+\cite{Simon2006}~(Ch.~13). The detectability analysis
+($\mathrm{rank}(\mathcal{O})=8$ with
+$e_{v_\ell}\notin\mathrm{null}(\mathcal{O})$) and the noise-free
+measurement-function verification (recovery to within
+$6\times10^{-15}$~m) are also developed in Section~\ref{sec:bias}.
+
+The present section provides the corresponding noise-domain
+verification: the $9$-state augmented EKF is implemented and run on
+the simulator output with realistic measurement noise
+($\sigma_y=1.5$~m) and injected biases.
+Section~\ref{sec:bias} establishes mathematical correctness; this
+section establishes engineering viability under noise.
+
+The augmented measurement function is
+\begin{equation}
+h_{\text{aug},i}(z_\text{aug})
+=\bigl\|p(s,\ell)-b_i^{\mathrm{NB}}\bigr\|_2+b_i+v_i,
+\qquad i=1,\dots,5,
+\label{eq:haug}
+\end{equation}
+where $b_i^{\mathrm{NB}}$ is the known beacon position and $b_i$ is
+the unknown bias to be estimated. All Jacobians
+$\partial h_\text{aug}/\partial z_\text{aug}$ and
+$\partial h_\text{aug}/\partial v$ are built symbolically in CasADi;
+the bias sub-Jacobian $I_5$ emerges automatically from the additive
+structure of \eqref{eq:haug}, with no hand coding required. The
+augmented \code{measurement\_update\_aug} and \code{time\_update\_aug}
+functions follow the same pattern as the baseline $4$-state primitives.
+
+To verify the augmented filter under noise, a $43$~s single-lap
+simulation was run with the bias vector
+$[+0.5,-0.3,+0.2,+0.8,-0.4]$~m injected on the five beacons (the same
+test vector used in Section~\ref{sec:bias} for the symbolic
+$h_\text{aug}$ verification). Two filters were run in parallel on the
+identical biased measurement stream: the $9$-state augmented EKF, and
+the $4$-state EKF of Section~\ref{sec:ekf} (baseline that ignores
+bias). Results are in Table~\ref{tab:bias} and
+Figure~\ref{fig:cell5}.
+
+\begin{table}[!htbp]
+\centering
+\caption{Bias recovery (top) and trajectory accuracy (bottom). All
+five biases recovered to within $0.024$~m; the augmented filter
+reduces mean arc-length error by a factor of $1.9$.}
+\label{tab:bias}
+\begin{tabular}{@{}cccc@{}}
+\toprule
+\textbf{Beacon} & \textbf{True bias (m)} &
+\textbf{Estimated (m)} & \textbf{Error (m)}\\
+\midrule
+$b_1$ & $+0.500$ & $+0.497$ & $-0.0028$\\
+$b_2$ & $-0.300$ & $-0.305$ & $-0.0052$\\
+$b_3$ & $+0.200$ & $+0.208$ & $+0.0078$\\
+$b_4$ & $+0.800$ & $+0.782$ & $-0.0184$\\
+$b_5$ & $-0.400$ & $-0.424$ & $-0.0244$\\
+\bottomrule
+\end{tabular}\\[6pt]
+\begin{tabular}{@{}lcc@{}}
+\toprule
+\textbf{Filter} & \textbf{Mean arc-length error (m)} &
+\textbf{Mean lateral error (m)}\\
+\midrule
+$4$-state EKF (bias ignored)    & $0.537$ & $0.029$\\
+$9$-state EKF (bias estimated)  & $0.277$ & $0.026$\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{cell5_output.png}
+\caption{$9$-state augmented EKF under injected beacon biases (Cell~5).
+Left: trajectory of the $9$-state EKF (green dashed) overlays the true
+path closely; the $4$-state baseline (red dashed) shows visible
+arc-length drift. Centre: bias estimates converge to the injected true
+values within approximately $5$~s. Right: lateral error traces for the
+two filters on log scale.}
+\label{fig:cell5}
+\end{figure}
+
+All five biases are recovered to within $0.024$~m, well below the
+$\sigma_y=1.5$~m measurement noise. Bias estimates converge to their
+true values within $5$--$10$~s. The augmented filter reduces the mean
+arc-length error from $0.537$~m to $0.277$~m, a factor of $1.9$
+improvement, confirming that the state-augmentation approach
+effectively decouples bias estimation from vehicle state estimation.
+Together with the detectability argument of Section~\ref{sec:bias},
+this constitutes an end-to-end treatment of the bias-handling
+requirement (theoretical formulation plus verified noise-domain
+implementation), rather than a theoretical discussion alone.
+
+%==============================================================
+\section{Computational Complexity and Real-time Feasibility}
+\label{sec:complexity}
+
+The computational cost of the EKF measurement update is dominated by
+the product $C\,\Sigma\,C^{\!\top}$ and the linear solve of the
+$5\times5$ innovation matrix $S$, which scale as $O(n_y^2 n_x)$ and
+$O(n_y^3)$ respectively, with $n_x=4$ and $n_y=5$. For the $9$-state
+augmented EKF, the state-side cost rises modestly to
+$O(n_y^2 n_\text{aug})$ with $n_\text{aug}=9$. Both operations involve
+only small dense matrices and complete in well under $1$~ms on a
+modern processor. The sampling period is $h=0.01$~s, giving a per-step
+budget of $10$~ms. Both the $4$-state and $9$-state EKF use less than
+$10\%$ of this budget, making them suitable for real-time embedded
+deployment.
 
 %==============================================================
 \section{Conclusion}
 \label{sec:conclusion}
 
-\textit{[To be drafted jointly after Sections~\ref{sec:ekf} and
-\ref{sec:mhe} are complete.]}
+This report presented the design and validation of a vehicle state
+estimator for an asymmetric teardrop track, combining a
+bound-respecting nonlinear modelling component with a CasADi-based EKF
+implementation. The principal results are:
+
+\begin{itemize}
+\item the track geometry constructed from the problem-statement
+      parameters is validated by five geometric tests, including a
+      shoelace-area check confirming clockwise traversal
+      (Section~\ref{sec:geometry});
+\item bound enforcement is built into the model structure rather than
+      imposed by post-hoc clipping, with adversarial stress tests
+      confirming that the nonlinear stiffness $k(\ell)$ returns the
+      vehicle to the centreline even from initial conditions outside
+      the operational $v_\ell$ bound (Section~\ref{sec:motion});
+\item a greedy GDOP-optimised five-beacon layout achieves mean GDOP
+      $0.92$ and $100\%$ coverage at $\mathrm{GDOP}<1$; Monte-Carlo
+      sensitivity analysis confirms robustness to
+      $\mathcal{N}(0,5^2)$ installation errors
+      (Section~\ref{sec:beacon});
+\item the $4$-state EKF achieves a Monte-Carlo arc-length error of
+      $0.247$~m, approximately $5.6\times$ below the single-shot
+      Cram\'er--Rao bound, and passes a Normalized Innovation Squared
+      consistency check (Sections~\ref{sec:mc}--\ref{sec:nis});
+\item a Moving Horizon Estimator implementation, while structurally
+      appealing, is $187\times$ over the real-time budget at
+      $100$~Hz, establishing the EKF as the correct engineering
+      choice (Section~\ref{sec:mhe});
+\item the $9$-state augmented EKF recovers injected beacon biases of
+      magnitude $0.2$--$0.8$~m to within $0.024$~m, providing the
+      noise-domain verification that complements the symbolic
+      verification of the bias formulation (Section~\ref{sec:bias-aug});
+\item the complete pipeline runs in under $1$~ms per step against a
+      $10$~ms budget, leaving substantial margin for embedded
+      deployment (Section~\ref{sec:complexity}).
+\end{itemize}
+
+The estimator's correctness is established through five complementary
+forms of evidence: trajectory plots (qualitative), RMSE statistics
+(quantitative aggregate), NIS check (statistical consistency), CRB and
+Lyapunov comparisons (against information-theoretic and
+covariance-theoretic limits), and ablation/stress tests (sensitivity
+and robustness).
+
+\paragraph{Future work.}
+Opportunities for further work, not pursued here due to scope
+constraints, include: (a) combining the EKF and MHE into a warm-start
+hybrid where the EKF provides the arrival cost for a short-horizon MHE
+invoked only near the track boundary; (b) replacing the SLSQP solver
+with a code-generated QP solver tailored to the banded horizon
+structure, which could close the real-time gap by one to two orders of
+magnitude; (c) extending the bias model from a pure random walk to a
+first-order Markov process, accommodating slowly varying drift
+(e.g.\ thermal) in addition to constant offset.
 
 %==============================================================
 \section*{AI Usage Statement}
@@ -632,18 +1348,48 @@ Member~B. EKF and MHE work items were tracked in Issue~\#3 with
 checkboxes for B1--B4.
 
 \subsubsection*{A.4 Individual contributions}
-\textbf{Member A (Chenhui Cui)}: Section~\ref{sec:modelling}
-in full --- track geometry (A1), bound-respecting nonlinear vehicle
-motion model (A2), beacon placement optimisation including
-failure-mode and Monte-Carlo sensitivity analyses (A3), noise
-parameter validation (A4), state augmentation for sensor bias (A5).
-\textbf{Member B (Weiting Wu)}: Sections~\ref{sec:ekf} and
-\ref{sec:mhe} in full --- EKF formulation and CasADi-based
-implementation (B1), Monte-Carlo evaluation (B2), bias injection test
-(B3), MHE implementation and EKF/MHE comparison (B4). All commits on
-the \texttt{ChenhuiCui} branch, as well as commits to \texttt{main}
-after 1~April 2026, are correctly attributed to
-\texttt{cuichenhui9-eng}.
+\textbf{Member A (Chenhui Cui)} authored
+Section~\ref{sec:modelling} in full --- track geometry
+(Section~\ref{sec:geometry}), bound-respecting nonlinear vehicle
+motion model (Section~\ref{sec:motion}), beacon placement
+optimisation including failure-mode and Monte-Carlo sensitivity
+analyses (Section~\ref{sec:beacon}), noise-parameter validation
+(Section~\ref{sec:noise}), and the state-augmentation formulation
+(Section~\ref{sec:bias}). Member~A also provided the mathematical
+foundations underpinning several estimator-side analyses: the
+Fisher-information / Cram\'er--Rao derivation that frames
+Section~\ref{sec:mc} Comparison~1; the Lyapunov steady-state
+covariance solver giving the theoretical references in Comparison~2;
+the augmented-state matrices $A_\text{aug}$, $G_\text{aug}$,
+$Q_\text{aug}$, the augmented measurement function $h_\text{aug}$
+and the rank-$8$ observability analysis that
+Section~\ref{sec:bias-aug} implements numerically; and the
+beacon-installation-error and single-beacon-failure analyses that
+the count ablation of Section~\ref{sec:ablation} empirically
+validates.
+
+\textbf{Member B (Weiting Wu)} authored
+Sections~\ref{sec:ekf}--\ref{sec:complexity}: the EKF formulation
+and CasADi-based implementation, the internal-model alignment
+correction, the single-run validation, the $100$-trial Monte-Carlo
+study, the Normalized Innovation Squared consistency check, the
+beacon-count ablation, the near-boundary stress test under the
+nonlinear truth model, the Moving Horizon Estimator implementation
+and real-time-feasibility comparison, the $9$-state
+bias-augmented EKF noise-domain verification, and the
+computational-complexity analysis. Member~B's implementation builds
+directly on Member~A's mathematical formulations for
+Sections~\ref{sec:mc} (Comparisons 1 and 2) and
+\ref{sec:bias-aug}.
+
+\textbf{Joint contributions}: the abstract; the Conclusion
+(Section~\ref{sec:conclusion}); the AI Usage Statement; this
+appendix; the merged bibliography; and \code{README.md},
+\code{AUTHORS.md} and \code{.mailmap} in the repository root.
+
+All commits on the \texttt{ChenhuiCui} branch and commits to
+\texttt{main} after 1~April 2026 are correctly attributed to
+\texttt{cuichenhui9-eng} via \code{.mailmap}.
 
 \subsubsection*{A.5 Team reflection}
 What went well: (i) early definition of an explicit interface between
@@ -659,7 +1405,7 @@ notebooks required explicit communication, addressed through GitHub
 Issues.
 
 %==============================================================
-\begin{thebibliography}{9}
+\begin{thebibliography}{99}
 
 \bibitem{Langley1999}
 R.~B. Langley, ``Dilution of Precision,''
@@ -679,6 +1425,17 @@ G.~L. Nemhauser, L.~A. Wolsey and M.~L. Fisher, ``An analysis of
 approximations for maximizing submodular set functions---I,''
 \emph{Mathematical Programming}, vol.~14, no.~1, pp.~265--294, 1978.
 
+\bibitem{Andersson2019}
+J.~A.~E. Andersson, J. Gillis, G. Horn, J.~B. Rawlings and M. Diehl,
+``CasADi: a software framework for nonlinear optimization and optimal
+control,'' \emph{Mathematical Programming Computation}, vol.~11,
+no.~1, pp.~1--36, 2019.
+
+\bibitem{Virtanen2020}
+P. Virtanen \emph{et~al.}, ``SciPy 1.0: fundamental algorithms for
+scientific computing in Python,'' \emph{Nature Methods}, vol.~17,
+pp.~261--272, 2020.
+
 \bibitem{KalmanI}
 P. Sopasakis, ``The Kalman Filter~I: The Gauss--Markov Model,''
 ELE8101 Lecture Notes, Queen's University Belfast, 2026.
@@ -692,6 +1449,23 @@ ELE8101 Lecture Notes, Queen's University Belfast, 2026.
 P. Sopasakis, ``The Kalman Filter~VI: Further Examples,''
 ELE8101 Lecture Notes, Queen's University Belfast, 2026.
 \url{https://am-press.github.io/posts/maths/kalman-6/}
+
+\bibitem{Sopasakis_2_bayesian_fie}
+P. Sopasakis, ``Bayesian Full Information Estimation,'' ELE8101
+lecture notebook \code{2\_bayesian\_fie.ipynb}, Queen's University
+Belfast, 2026.
+
+\bibitem{Sopasakis_4_kalman_variants}
+P. Sopasakis, ``Kalman Filter Variants,'' ELE8101 lecture notebook
+\code{4\_kalman\_variants.ipynb}, Queen's University Belfast, 2026.
+
+\bibitem{Sopasakis_5_ekf}
+P. Sopasakis, ``Extended Kalman Filter,'' ELE8101 lecture notebook
+\code{5\_ekf.ipynb}, Queen's University Belfast, 2026.
+
+\bibitem{Sopasakis_6_tutorial}
+P. Sopasakis, ``Tutorial on Kalman Filter Design,'' ELE8101 lecture
+notebook \code{6\_tutorial.ipynb}, Queen's University Belfast, 2026.
 
 \end{thebibliography}
 
