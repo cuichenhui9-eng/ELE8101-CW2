@@ -1,116 +1,166 @@
 # ELE8101 CW2 — Vehicle State Estimation on a Racing Track
 
-**Module:** ELE8101 Estimation Theory | Queen's University Belfast | Spring 2026
+**Module:** ELE8101 Estimation Theory · Queen's University Belfast · Spring 2026
 
-**Group members:**
-- ChenhuiCui (Member A) — Modelling
-- Weiting Wu (Member B) — EKF Estimator
+**Authors:** Chenhui Cui, Weiting Wu
+
+This repository contains the modelling work, the estimator
+implementation, and the integrated LaTeX report for the ELE8101
+coursework on vehicle state estimation on an asymmetric teardrop
+track using only noisy range measurements to a small number of fixed
+beacons.
 
 ---
 
-## Repository Structure
+## Repository structure
 
-| File | Description |
+| Path | Description |
 |---|---|
-| `Modelling.ipynb` | Track geometry (A1), vehicle motion model (A2), beacon placement (A3), noise validation (A4), sensor bias handling (A5) |
-| `Estimator.ipynb` | EKF (B1 single-run, B2 Monte-Carlo + NIS, B3 MHE comparison, B4 9-state augmented EKF, B5 anchor-count ablation, B6 near-boundary stress) |
-| `Figures_ChenhuiCui/` | Plots produced by `Modelling.ipynb` |
-| `Figures_WeitingWu/` | Plots produced by `Estimator.ipynb` |
-| `results_summary.json` | Numerical results consumed by the report (regenerated each notebook run) |
+| `Modelling.ipynb` | Track geometry (A1), bound-respecting nonlinear vehicle motion model (A2), beacon placement optimisation (A3), noise-parameter validation (A4), sensor-bias state augmentation (A5). |
+| `Estimator.ipynb` | EKF B1 single-run · B2 Monte-Carlo + NIS · B3 MHE comparison · B4 9-state augmented EKF · B5 beacon-count ablation · B6 near-boundary stress test, with sensitivity scans for `P0` and `q_β`, a closed-loop covariance-trace plot, and a linear-vs-nonlinear truth-model comparison. |
+| `Figures_Modelling/` | Figures produced by `Modelling.ipynb` (referenced in Section 1 of the report). |
+| `Figures_Estimator/` | Figures produced by `Estimator.ipynb` (referenced in Sections 3–5 of the report). |
+| `results_summary.json` | Auto-exported summary of every numerical claim in the report; regenerated on each notebook run, used to verify that the report's quoted numbers and the live notebook outputs do not drift. |
+| `report/main.tex` | Integrated LaTeX report (modelling + estimator + appendix). Compile with XeLaTeX. |
+| `AUTHORS.md` | File-level contribution attribution. |
+| `.mailmap` | Author-identity consolidation (corrects an early local-username mis-configuration). |
+| `practise/` | Stand-alone EKF practice notebooks from the lecturer's tutorial sequence. Not used in the final report. |
 
 ---
 
-## How to Run
+## How to run
 
 ### Dependencies
-pip install numpy matplotlib casadi
+
+```bash
+pip install numpy matplotlib casadi scipy jupyter nbconvert
+```
+
+The notebooks were developed and tested with Python 3.13, NumPy ≥ 2.3,
+SciPy ≥ 1.16, CasADi 3.7.
 
 ### Modelling
 
-Open and run all cells in `Modelling.ipynb` (top-to-bottom). Figures
-are saved to `Figures_ChenhuiCui/`.
+```bash
+jupyter nbconvert --to notebook --execute --inplace Modelling.ipynb
+```
+
+Figures land in `Figures_Modelling/`. The notebook is fully
+deterministic when its internal `MASTER_SEED` is left at its default.
 
 ### Estimator
 
-Open and run all cells in `Estimator.ipynb`. Figures are saved to
-`Figures_WeitingWu/` and the numerical results table is written to
-`results_summary.json`. Reproducibility is guaranteed: every cell
-seeds its own `np.random.default_rng` from a single `MASTER_SEED`,
-so identical runs produce byte-identical figures.
+```bash
+jupyter nbconvert --to notebook --execute --inplace Estimator.ipynb \
+        --ExecutePreprocessor.timeout=2400
+```
+
+End-to-end runtime is roughly fifteen minutes; the dominant cost is
+the MHE comparison cell (B3), which solves a constrained nonlinear
+program at every horizon step. Figures land in `Figures_Estimator/`
+and a JSON summary lands in `results_summary.json`.
+
+Reproducibility is guaranteed by a single top-level `MASTER_SEED`
+plus per-cell `np.random.default_rng(SEED_B<n> + trial)` instances:
+re-running the notebook from a clean state produces byte-identical
+figures and a byte-identical `results_summary.json`.
+
+### Compiling the report
+
+```bash
+cd report
+xelatex -interaction=nonstopmode main.tex
+xelatex -interaction=nonstopmode main.tex   # second pass for refs
+```
+
+XeLaTeX is required because the preamble uses `fontspec` /
+`\setmainfont{Times New Roman}`. The graphics path is configured for
+both `report/` and the repository root, so figures are picked up
+without copying.
 
 ---
 
-## Key Results (Modelling)
+## Key numerical results
 
-### Track and Model
+### Modelling
 
 | Parameter | Value |
 |---|---|
-| Track perimeter *L* | 426.7104 m |
-| Centreline radii | *R*ₐ = 48 m, *R*ᵦ = 22 m |
+| Track perimeter L | 426.7104 m |
+| Centreline radii | R\_A = 48 m, R\_B = 22 m |
 | Straight inclination α | 15.0701° |
-| Sampling time *h* | 0.01 s (100 Hz) |
-| State vector | *z* = [*s*, *ℓ*, *v*ₛ, *v*ₗ]ᵀ |
-| Process noise *Q* | diag(0.5, 0.002) |
-| Measurement noise *R* | 2.25 m² (σᵧ = 1.5 m) |
+| Sampling period h | 0.01 s (100 Hz) |
+| State vector | z = [s, ℓ, v\_s, v\_ℓ]ᵀ |
+| Process noise Q | diag(0.5, 0.002) |
+| Measurement noise R | 2.25 m² (σ\_y = 1.5 m) |
+| Beacon count | 5 (mean GDOP 0.9193; 100% of track at GDOP < 1) |
+| Beacon coordinates (m) | (-21.1, 73.3), (121.1, 46.7), (26.3, -60.0), (-52.6, 20.0), (89.5, -46.7) |
 
-### Bound-respecting dynamics
+Bound-respecting dynamics: ℓ confined by a nonlinear stiffness k(ℓ)
+that diverges as |ℓ| → 2 m; v\_s and v\_ℓ confined by smooth
+tanh saturations. Monte-Carlo verification over 100 × 3000 steps
+shows max |ℓ| = 0.109 m, max |v\_ℓ| = 0.335 m/s — well inside
+the physical 2 m / 0.55 m/s bounds with no post-hoc clipping.
 
-Physical bounds are enforced **by model structure** (not by post-hoc clipping):
-
-- **ℓ** bounded by nonlinear stiffness *k*(*ℓ*) that diverges as \|*ℓ*\| → 2 m
-- **v**ₗ soft-saturated via tanh at ±0.55 m/s
-- **v**ₛ soft-saturated via tanh in (0, 25) m/s
-
-Monte Carlo verification (100 trials × 3000 steps, no clipping):
-
-| Constraint | Result | Bound | Status |
-|---|---|---|---|
-| max \|ℓ\| | 0.109 m | 2.0 m | ✓ |
-| max \|*v*ₗ\| | 0.335 m/s | 0.55 m/s | ✓ |
-| max *v*ₛ | 20.08 m/s | 25 m/s | ✓ |
-| min *v*ₛ | 5.05 m/s | > 0 | ✓ |
-
-### Beacon placement (GDOP-optimised)
+### Estimator (Monte-Carlo, 100 trials)
 
 | Metric | Value |
 |---|---|
-| Number of beacons | 5 |
-| Mean GDOP | 0.9193 |
-| Max GDOP | 0.9770 |
-| % of track with GDOP < 1.0 | 100% |
-| Installation boundary | 30 m (Pareto-optimal) |
+| Mean arc-length error | 0.226 m |
+| Mean lateral error | 0.022 m |
+| EKF / single-shot GDOP benchmark | ≈ 6.1× smaller (0.226 m vs 1.379 m) |
+| NIS empirical mean | 4.994 (theoretical 5.000; 95.0% in the 95% band) |
+| Closed-loop covariance-trace decay | ≈ 5× across the 5 s warm-up window |
+| Per-step EKF runtime | 0.43 ms (4.3% of the 10 ms budget) |
+| MHE solve time vs budget | 1275 ms (128× over budget; 0/490 SLSQP failures) |
+| 9-state augmented EKF max bias-recovery error | 0.0354 m for biases up to ±0.8 m |
+| q\_β sensitivity (1 e-8 to 1 e-5) | bias-recovery error stays below 0.12 m |
+| P\_0 scaling (×0.1 to ×5) | steady-state arc error invariant to 1 e-7 m |
 
-**Beacon coordinates (m):**
-B1: (-21.1,  73.3)
-B2: (121.1,  46.7)
-B3: ( 26.3, -60.0)
-B4: (-52.6,  20.0)
-B5: ( 89.5, -46.7)
+All numbers are exported on every notebook run to
+`results_summary.json` and cited verbatim in `report/main.tex`.
 
-### Sensitivity
+---
 
-Monte Carlo installation-error analysis (200 realisations, σ = 5 m per coordinate):
+## Branch layout
 
-| Metric | Value |
+| Branch | Purpose |
 |---|---|
-| Median GDOP | 0.9205 (+0.1%) |
-| 95th percentile | 0.9308 (+1.2%) |
-| Worst case | 0.9368 (+1.9%) |
-| Pr(mean GDOP < 1) | 100% |
+| `main` | Integrated submission state. |
+| `ChenhuiCui` | Modelling-side development; later carried the final estimator-notebook consolidation and report integration. |
+| `WeitingWu` | Estimator-side first-pass development. Frozen at the last estimator-side commit so that the boundary between the two members' work is unambiguous in the git log. |
+
+The `WeitingWu` branch is intentionally not advanced beyond its last
+commit; the final submission state lives entirely on `main` /
+`ChenhuiCui` after the 25 April integration round.
 
 ---
 
-## Branch Structure
+## Author identity
 
-- `main` — integrated version for submission
-- `ChenhuiCui` — Member A (modelling) development branch
-- `WeitingWu` — Member B (EKF) development branch
+Both authors are credited via `.mailmap`:
+
+```
+Chenhui Cui <cuichenhui9@gmail.com>   (GitHub: cuichenhui9-eng)
+Weiting Wu  <wu18875929815@outlook.com>   (GitHub: wu1826036713-ship-it)
+```
+
+A small number of early commits were authored under the legacy local
+username `cch` due to a `git config` mis-configuration on one
+machine; `.mailmap` consolidates these back to Chenhui Cui's primary
+identity. See `AUTHORS.md` and Appendix A.2 of the report for
+details.
 
 ---
 
-## Notes
+## Reproducibility checklist
 
-- All saturations are C∞ (smooth) for compatibility with EKF Jacobian linearisation.
-- Member A exports `f_dynamics(z, w)` and `A_jacobian(z_hat)` for use by Member B's EKF.
-- Historical commits prior to April 1, 2026 may display under a legacy local username `cch` due to an early git config issue; all subsequent activity is correctly attributed to `cuichenhui9-eng`. See report appendix.
+- A single `MASTER_SEED` controls all stochastic experiments.
+- Both notebooks call `np.random.default_rng` with explicit per-cell
+  seeds (no reliance on the global RNG).
+- Every numerical claim in the report is exported to
+  `results_summary.json` and re-checked on each run.
+- All figures are regenerated from the notebooks; nothing is checked
+  in by hand.
+- Compilation requires only XeLaTeX with system Times New Roman; no
+  CTAN package outside BasicTeX is needed.

@@ -12,14 +12,14 @@ GitHub: [@cuichenhui9-eng](https://github.com/cuichenhui9-eng)
   state augmentation)
 - `report/main.tex` — Section 1 (Modelling), AI-usage statement, all
   appendices
-- `Figures_ChenhuiCui/*.png` — all figures referenced in Section 1
+- `Figures_Modelling/*.png` — all figures referenced in Section 1
 - `.mailmap` — author identity consolidation
 - `Estimator.ipynb` — final consolidated estimator (CasADi-Jacobian
   prediction step, unified bound-respecting truth model, circular
   arc-length error metric, per-step EKF runtime benchmark, nonlinear
   MHE constraint, default-rng-seeded reproducibility,
   `results_summary.json` export)
-- `Figures_WeitingWu/*.png` — final figures regenerated from the
+- `Figures_Estimator/*.png` — final figures regenerated from the
   consolidated `Estimator.ipynb`
 
 ## Member B — Weiting Wu
