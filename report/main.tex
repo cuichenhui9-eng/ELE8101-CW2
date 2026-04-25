@@ -1391,34 +1391,41 @@ Weiting: B4 EKF chapter draft.
 Both: report skeleton and symbol table.\\
 \hline
 19 Apr & online &
-Chenhui identified that $\rho=20$~m is the inner-wall radius at $B$,
-so $R_B=\rho+w=22$~m (not $20$~m); the corrected $R_B$ value, the
-re-optimised beacon coordinates, and the updated measurement-noise
-covariance $R$ were communicated to the estimator side. &
-Weiting: update the estimator's $R_B$, $R$ and beacon coordinates,
+Chenhui Cui identified that $\rho=20$~m is the inner-wall radius at
+$B$, so $R_B=\rho+w=22$~m (not $20$~m); the corrected $R_B$, the
+re-optimised five-beacon coordinates, and the updated
+measurement-noise covariance $R$ were communicated to the estimator
+side. &
+Weiting Wu: update the estimator's $R_B$, $R$ and beacon coordinates
 and re-run B1--B3 (commits \texttt{b037600}, \texttt{ee33948}).\\
 \hline
 21 Apr & online &
-Chenhui designed the bound-respecting nonlinear vehicle model
+Chenhui Cui designed the bound-respecting nonlinear vehicle model
 (position-dependent stiffness $k(\ell)$ and $\tanh$ saturations on
 $v_s, v_\ell$, commit \texttt{495da79}) to replace the earlier
 post-hoc clipping surrogate, and updated $Q$ to
-$\mathrm{diag}(0.5,0.002)$ to match the new dynamics; the Lyapunov
-steady-state cross-check was added on the modelling side. &
-Weiting: import the new $f_{\mathrm{dynamics}}$ into the estimator
-notebook and re-tune EKF parameters to match the revised model.\\
+$\mathrm{diag}(0.5,0.002)$ to match; the Lyapunov steady-state
+cross-check was added on the modelling side. &
+Weiting Wu: import the new $f_{\mathrm{dynamics}}$ into the
+estimator notebook and re-tune EKF parameters to match the revised
+model.\\
 \hline
 24 Apr & in person &
-PR \#2 (modelling polish) and PR \#4 (estimator sync) merged.
-Identified a legacy local-username mis-attribution from earlier
-commits. &
-Created \texttt{.mailmap} and \texttt{AUTHORS.md}; renamed the
-modelling notebook to \texttt{Modelling.ipynb} for clarity.\\
+Chenhui Cui consolidated PR~\#2 (modelling-side polish) and merged
+Weiting Wu's PR~\#4 (estimator parameter sync) and PR~\#5 (per-cell
+PNG-export snippets); both members confirmed a legacy
+local-username mis-attribution from earlier commits. &
+Chenhui Cui: create \texttt{.mailmap} (commit \texttt{1bbb644}) and
+\texttt{AUTHORS.md}; rename the modelling notebook to
+\texttt{Modelling.ipynb} (commit \texttt{8b88af4}).\\
 \hline
 25 Apr (am) & online &
-PR \#6 merged (beacon-count ablation, sharp $N{=}4{\to}5$ threshold
-confirmed); PR \#7 opened (near-boundary stress test); NIS
-consistency check added. &
+Weiting Wu opened and merged PR~\#6 (Cell~6 beacon-count ablation,
+applying the GDOP analysis of Section~\ref{sec:beacon} to confirm the
+sharp $N{=}4{\to}5$ threshold) and opened PR~\#7 (Cell~7
+near-boundary stress test, using Chenhui Cui's $f_{\mathrm{dynamics}}$
+as the truth simulator); the NIS consistency check was added to
+Cell~3 (commit \texttt{0bb2c33}). &
 Modelling-side code freeze.\\
 \hline
 25 Apr (pm) & Chenhui Cui only &
