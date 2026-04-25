@@ -1371,81 +1371,52 @@ commit hashes refer to the GitHub repository in~A.2.
 \textbf{Follow-up actions}\\
 \hline
 24 Mar & in person &
-Kick-off. Agreed on a Python, Jupyter and CasADi workflow,
-repository structure, shared random seed $42$, and report page budget. &
+Kick-off; agreed on Python/Jupyter/CasADi workflow, repository
+structure, and shared random seed $42$. &
 Chenhui: track geometry and state-space draft.
-Weiting: 1D/2D EKF practice and estimator skeleton.
-Both: agree interface \texttt{(s\_to\_xy, s\_to\_normal)}.\\
+Weiting: EKF practice and estimator skeleton.\\
 \hline
 30 Mar & online &
-A1--A3 first pass complete; B1 Steps~1--4 complete; first plan document
-drafted. &
-Chenhui: A4 noise scan ($Q,\phi_1,k_2$); A5 sensor-bias augmentation.
-Weiting: B2 Monte-Carlo, B3 MHE comparison.\\
+A1--A3 and B1 first pass complete. &
+Chenhui: A4--A5 (noise scan, sensor-bias augmentation).
+Weiting: B2--B3 (Monte-Carlo, MHE).\\
 \hline
 6 Apr & online &
-A4 / A5 / B2 / B3 complete. Key finding: MHE solve time exceeds
-real-time budget; EKF retained as primary estimator. &
-Chenhui: A6 modelling chapter draft.
-Weiting: B4 EKF chapter draft.
-Both: report skeleton and symbol table.\\
+A4/A5/B2/B3 complete. MHE found not real-time feasible. &
+Chenhui: A6 modelling chapter.
+Weiting: B4 estimator chapter.\\
 \hline
 19 Apr & online &
-Reviewed the estimator side following Chenhui Cui's modelling-side
-rewrite of 1~April (commit \texttt{590cf6b}: ``A1--A3 complete
-rewrite with corrected $R_B=22$~m, GDOP $<1$, $30$~m installation
-boundary''), which had identified that $\rho=20$~m is the inner-wall
-radius at $B$ and re-optimised the five-beacon coordinates. The
-corrected $R_B$, beacon coordinates and $R$ had not yet been
-fully propagated into Weiting Wu's Step~4. &
-Weiting Wu: correct Step~4 with the new $R_B$ and beacon coordinates
-(commit \texttt{b037600}) and re-run B1--B3.\\
+Estimator code had not yet propagated Chenhui Cui's 1 April
+modelling rewrite (commit \texttt{590cf6b}: corrected
+$R_B=22$~m and re-optimised five-beacon coordinates). &
+Weiting Wu: correct Step~4 (commit \texttt{b037600})
+and re-run B1--B3.\\
 \hline
 21 Apr & online &
-Chenhui Cui designed the bound-respecting nonlinear vehicle model
-(position-dependent stiffness $k(\ell)$ and $\tanh$ saturations on
-$v_s, v_\ell$, commit \texttt{495da79}) to replace the earlier
-post-hoc clipping surrogate, and updated $Q$ to
-$\mathrm{diag}(0.5,0.002)$ to match; the Lyapunov steady-state
-cross-check was added on the modelling side. Weiting Wu also
-applied a further $R_B$ geometry refresh on the estimator side
-(commit \texttt{ee33948}: ``Fix $R_B$ geometry, update beacon
-coordinates, add nominal velocity drift in the EKF internal
-model''). &
-Weiting Wu: import the new $f_{\mathrm{dynamics}}$ into the
-estimator notebook and re-tune EKF parameters to match the revised
-model.\\
+Chenhui Cui: bound-respecting nonlinear model and matching
+$Q$ update (commit \texttt{495da79}).
+Weiting Wu: further $R_B$/EKF refresh (commit \texttt{ee33948}). &
+Weiting Wu: import $f_{\mathrm{dynamics}}$ into the estimator
+notebook.\\
 \hline
 24 Apr & in person &
-Chenhui Cui consolidated PR~\#2 (modelling-side polish) and merged
-Weiting Wu's PR~\#4 (estimator parameter sync) and PR~\#5 (per-cell
-PNG-export snippets); both members confirmed a legacy
-local-username mis-attribution from earlier commits. &
+Chenhui Cui consolidated PR~\#2 and merged Weiting Wu's PR~\#4
+and PR~\#5. &
 Chenhui Cui: create \texttt{.mailmap} (commit \texttt{1bbb644}) and
-\texttt{AUTHORS.md}; rename the modelling notebook to
-\texttt{Modelling.ipynb} (commit \texttt{8b88af4}).\\
+\texttt{AUTHORS.md}; rename the modelling notebook
+(commit \texttt{8b88af4}).\\
 \hline
 25 Apr (am) & online &
-Weiting Wu opened and merged PR~\#6 (Cell~6 beacon-count ablation,
-applying the GDOP analysis of Section~\ref{sec:beacon} to confirm the
-sharp $N{=}4{\to}5$ threshold) and opened PR~\#7 (Cell~7
-near-boundary stress test, using Chenhui Cui's $f_{\mathrm{dynamics}}$
-as the truth simulator); the NIS consistency check was added to
-Cell~3 (commit \texttt{0bb2c33}). &
+Weiting Wu: PR~\#6 (beacon-count ablation), PR~\#7 (boundary
+stress test), and NIS check (commit \texttt{0bb2c33}); all built on
+Chenhui Cui's modelling. &
 Modelling-side code freeze.\\
 \hline
 25 Apr (pm) & Chenhui Cui only &
-Estimator notebook re-implemented with the unified nonlinear truth
-simulator, CasADi-derived prediction Jacobians $A_t$ and $L_t$,
-analytical-Jacobian MHE constraint, $P_0$ and $q_\beta$ sensitivity
-scans, closed-loop covariance-trace plot, and the
-\code{numpy.random.default\_rng} reproducibility chain. All figures
-regenerated; every reported number exported to
-\code{results\_summary.json}. &
-Final integration of the modelling and estimator chapters into a
-single \code{report/main.tex}; notation and cross-references
-harmonised; all numerical claims cross-checked against the
-regenerated \code{results\_summary.json}; final proofreading.\\
+Final consolidated estimator notebook (16 unified patches); all
+figures regenerated; \code{results\_summary.json} exported. &
+Integrated final report; final proofreading.\\
 \hline
 \end{tabular}
 \end{table}
