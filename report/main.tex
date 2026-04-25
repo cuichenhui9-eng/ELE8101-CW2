@@ -75,7 +75,7 @@
 \title{\vspace{-1.5cm}
        \textbf{ELE8101: Estimation Theory}\\[2pt]
        \large Coursework 2 --- Vehicle State Estimation on a Racing Track}
-\author{Chenhui Cui \quad\quad Weiting Wu}
+\author{Chenhui Cui \hspace{2cm} Weiting Wu}
 \date{April 2026}
 
 %==============================================================
@@ -204,11 +204,14 @@ smooth $\tanh$ speed-bounding map (so $\phi_s\,\mathrm{sech}^2(\zeta_s)
 \approx 0.961$ at $v_s=10$~m/s), $\phi_1=0.9$ and $k_2=10$. The four
 eigenvalues $\{0.9113,0.9887,1,0.9601\}$ all satisfy $|\lambda|\le1$;
 the unit eigenvalue corresponds to the integrator on $s$, the
-remaining modes are strictly stable. $A_0$ is used here only for the Lyapunov
-steady-state cross-check of Section~\ref{sec:bias}; the EKF
-prediction step itself uses the local Jacobian
-$A_t=\partial f/\partial z|_{\hat{z}_{t|t}}$ at every step, as
-detailed in Section~\ref{sec:ekf-formulation}.
+remaining modes are strictly stable. The matrix $G$ is the
+\emph{unsaturated} reference noise-injection matrix; the EKF time
+update of Section~\ref{sec:ekf-formulation} uses the local
+noise-input Jacobian $L_t=\partial f/\partial w|_{\hat{z}_{t|t}}$
+instead, whose third diagonal entry carries the same
+$\mathrm{sech}^2$ saturation slope as $A_t$. $A_0$ and $G$ are used
+here only for the Lyapunov steady-state cross-check of
+Section~\ref{sec:bias}.
 
 \paragraph{Parameters.}
 Process noise $Q=\mathrm{diag}(0.5,0.002)$, justified by the
@@ -985,7 +988,8 @@ modelling-side near-outer-wall test of Section~\ref{sec:motion}, both
 indicating that the nonlinear spring physically returns the vehicle
 from a near-boundary start. The complementary estimator-side
 observation is that the EKF tracks the centring transient with
-sub-millimetre error even though the true lateral state changes by
+centimetre-level lateral error (mean $\approx 0.02$~m in
+Table~\ref{tab:bdy}) even though the true lateral state changes by
 $1.8$~m in the first $5$~s. The slight ordering
 A\,$<$\,B\,$<$\,C ($0.0186<0.0207<0.0217$~m) reflects the brief
 excursion through the high-stiffness region $|\ell|\approx 1$, where
@@ -1144,8 +1148,8 @@ The present section provides the corresponding noise-domain
 verification: the $9$-state augmented EKF is implemented and run on
 the simulator output with realistic measurement noise
 ($\sigma_y=1.5$~m) and injected biases.
-Section~\ref{sec:bias} establishes mathematical correctness; this
-section establishes engineering viability under noise.
+Section~\ref{sec:bias} sets up the augmented-state formulation;
+this section verifies its engineering viability under noise.
 
 The augmented measurement function is
 \begin{equation}
@@ -1219,8 +1223,9 @@ true values within $5$--$10$~s. The augmented filter reduces the mean
 arc-length error from $0.510$~m to $0.239$~m, a factor of $2.1$
 improvement, confirming that the state-augmentation approach
 effectively decouples bias estimation from vehicle state estimation.
-Together with the detectability argument of Section~\ref{sec:bias},
-this constitutes an end-to-end treatment of the bias-handling
+Together with the conservative observability discussion of
+Section~\ref{sec:bias}, this provides an end-to-end treatment of the
+bias-handling
 requirement (theoretical formulation plus verified noise-domain
 implementation), rather than a theoretical discussion alone.
 
