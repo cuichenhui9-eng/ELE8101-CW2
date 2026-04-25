@@ -31,6 +31,8 @@
 \usepackage{array}
 \usepackage{caption}
 \usepackage{float}
+\usepackage{placeins}              % \FloatBarrier
+\renewcommand{\arraystretch}{1.15} % global table row spacing
 % Permissive graphicspath: search current dir, parent dir, and any
 % Figures_Modelling/ or Figures_Estimator/ subfolder thereof.  This
 % lets the project compile whether main.tex sits next to the figures
@@ -73,7 +75,9 @@
 \title{\vspace{-1.5cm}
        \textbf{ELE8101: Estimation Theory}\\[2pt]
        \large Coursework 2 --- Vehicle State Estimation on a Racing Track}
-\author{Chenhui Cui \quad\quad Weiting Wu}
+\author{Chenhui Cui\thanks{Member~A, modelling and final integration}
+        \and
+        Weiting Wu\thanks{Member~B, original estimator implementation}}
 \date{April 2026}
 
 %==============================================================
@@ -102,7 +106,7 @@ factor of $128$, supporting the EKF as the preferred estimator for
 this implementation. A $9$-state augmented EKF recovers injected
 sensor biases up to $0.8$~m to within $0.04$~m. Source code and
 \code{results\_summary.json} are available at
-\url{https://github.com/cuichenhui9-eng/ELE8101-CW2}.
+\href{https://github.com/cuichenhui9-eng/ELE8101-CW2}{\texttt{github.com/cuichenhui9-eng/ELE8101-CW2}}.
 \end{abstract}
 
 %==============================================================
@@ -133,25 +137,21 @@ $L=2l_{\text{tan}}+l_{\text{arc},A}+l_{\text{arc},B}=426.7104$~m.
 
 The vehicle position is parameterised by arc-length $s\in[0,L)$
 (clockwise from the upper straight) and signed lateral offset
-$\ell\in[-2,+2]$~m ($\ell>0$: outward). Three piecewise-analytic
-functions are implemented, denoted $p(s)$, $n(s)$, and
-$p(s,\ell)=p(s)+\ell\,n(s)$. Five verification tests confirm the
-construction: track width equals $4.0000$~m at all sampled
-arc-lengths; unit-normal magnitudes equal $1.000000$; gaps at
-arc--straight joins, measured by a finite-difference probe of
-step~$10^{-3}$~m, are bounded by $2$~mm (a probe artefact, since
-tangency at the joins is analytically exact); the shoelace signed area
-evaluates to $-11\,617.32$~m$^2$ (the negative sign rigorously confirms
-clockwise traversal); and $\Delta x=+4.83$~m at $s=0$. The geometry is
-shown in Figure~\ref{fig:track}.
+$\ell\in[-2,+2]$~m ($\ell>0$: outward); three piecewise-analytic
+functions $p(s)$, $n(s)$ and $p(s,\ell)=p(s)+\ell\,n(s)$ implement
+the geometry. Five verification tests pass: the track width is
+$4.0000$~m everywhere, unit-normal magnitudes are $1$ to six
+decimals, the arc--straight join gaps are below the $2$~mm probe
+resolution, the shoelace area is negative ($-11\,617.32$~m$^2$,
+confirming clockwise traversal), and $\Delta x=+4.83$~m at $s=0$.
+The geometry is shown in Figure~\ref{fig:track}.
 
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.68\textwidth]{track_geometry.png}
-\caption{Track geometry with centreline (dashed), inner wall
-($\ell=-2$~m, blue) and outer wall ($\ell=+2$~m, red). Arc centres $A$
-and $B$ are marked with crosses; orange arrows indicate the clockwise
-direction of travel. $R_A=48$~m, $R_B=22$~m, $L=426.71$~m.}
+\caption{Track geometry: centreline (dashed), inner wall (blue,
+$\ell=-2$~m), outer wall (red, $\ell=+2$~m), and arc centres $A$,
+$B$. Orange arrows indicate clockwise travel.}
 \label{fig:track}
 \end{figure}
 
@@ -253,10 +253,9 @@ conditions beyond the linear regime.
 \centering
 \includegraphics[width=0.88\textwidth]{stress_test.png}
 \caption{Adversarial stress tests: lateral offset $\ell(t)$ for three
-initial conditions, including one with an impulse $v_{\ell,0}=
-2.0$~m/s far outside the operational bound. The nonlinear spring
-keeps $|\ell|<2$~m in all cases, demonstrating active (not post-hoc)
-bound enforcement.}
+initial conditions, including an impulse $v_{\ell,0}=2.0$~m/s beyond
+the operational bound. The nonlinear spring keeps $|\ell|<2$~m in
+all cases.}
 \label{fig:stress}
 \end{figure}
 
@@ -336,32 +335,18 @@ $N$ & Mean GDOP & Max GDOP & Expected error & \% with GDOP${<}1$\\
 \centering
 \includegraphics[width=0.66\textwidth]{beacon_heatmap.png}
 \caption{GDOP heatmap for the five optimal beacons (blue stars). The
-entire track lies within the attenuating zone ($\mathrm{GDOP}<1$,
-green). Warm colours outside the track indicate GDOP degradation far
-from the optimised region; this is expected, since only on-track
-positions contribute to the objective.}
+track lies entirely within the attenuating zone ($\mathrm{GDOP}<1$,
+green); warm colours outside the track are not part of the objective.}
 \label{fig:heatmap}
 \end{figure}
 
 \paragraph{Single-beacon failure robustness.}
-Figure~\ref{fig:failure} quantifies the cost of losing any single
-beacon: removing any one of the five raises the mean GDOP from
-$0.9193$ to between $1.048$ and $1.087$ (worst case: $a_1$ removed,
-$+18.3\%$). Coverage drops from $100\%$ to $0\%$ but mean GDOP
-remains below $1.09$, indicating graceful degradation rather than
-preservation of the $\mathrm{GDOP}<1$ design criterion. The $N=5$
-configuration is therefore selected because it nominally meets the
-criterion and fails gracefully under any single-point fault.
-
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=0.68\textwidth]{beacon_failure_mode.png}
-\caption{Single-beacon failure robustness. The baseline ($N=5$, green)
-covers $100\%$ of the track at $\mathrm{GDOP}<1$; removing any single
-beacon (red) raises mean GDOP by $13.9$--$18.3\%$ but keeps it below
-$1.09$, indicating graceful degradation.}
-\label{fig:failure}
-\end{figure}
+Removing any one of the five beacons raises the mean GDOP from
+$0.9193$ to between $1.048$ and $1.087$ ($+13.9$--$18.3\%$, worst
+case $a_1$); coverage drops from $100\%$ to $0\%$ but mean GDOP
+remains below $1.09$. The $N=5$ configuration is therefore selected
+because it nominally meets the $\mathrm{GDOP}<1$ criterion and fails
+gracefully under any single-point fault.
 
 \paragraph{Installation boundary (spatial ablation).}
 The $30$~m outer limit is data-derived (Figure~\ref{fig:ablation}).
@@ -376,11 +361,11 @@ limit that meets the GDOP criterion everywhere.
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.88\textwidth]{beacon_distance_ablation.png}
-\caption{Spatial ablation: mean GDOP (left) and fraction of track
-with $\mathrm{GDOP}<1$ (right) as a function of maximum installation
-distance. The greedy algorithm is re-optimised independently at each
-boundary. The green dashed line at $30$~m marks the Pareto-optimal
-knee where $100\%$ coverage is first achieved.}
+\caption{Spatial ablation: mean GDOP (left) and the fraction of
+track with $\mathrm{GDOP}<1$ (right) versus maximum installation
+distance, with the greedy algorithm re-optimised at each boundary.
+The dashed line at $30$~m marks the Pareto-optimal knee where
+$100\%$ coverage is first achieved.}
 \label{fig:ablation}
 \end{figure}
 
@@ -398,10 +383,8 @@ realistic installation noise.
 \centering
 \includegraphics[width=0.88\textwidth]{beacon_sensitivity.png}
 \caption{Monte-Carlo beacon sensitivity under independent
-$\mathcal{N}(0,5^2)$ installation errors on each coordinate ($200$
-realisations). Left: distribution of mean GDOP over the track; all
-realisations satisfy $\mathrm{GDOP}<1$. Right: distribution of
-per-realisation track coverage.}
+$\mathcal{N}(0,5^2)$ installation errors per coordinate ($200$
+realisations). All realisations satisfy $\mathrm{GDOP}<1$.}
 \label{fig:sensitivity}
 \end{figure}
 
@@ -452,10 +435,12 @@ is augmented to $z_\text{aug}=[s,\ell,v_s,v_\ell,\beta_1,\dots,\beta_5]
 $z_{\text{aug},t+1}=A_\text{aug}z_{\text{aug},t}+G_\text{aug}
 w_{\text{aug},t}$ and
 \begin{equation}
-A_\text{aug}=\begin{bmatrix}A&0\\0&I_5\end{bmatrix},\quad
-G_\text{aug}=\begin{bmatrix}G&0\\0&I_5\end{bmatrix},\quad
-Q_\text{aug}=\mathrm{diag}\bigl(0.5,0.002,
+\begin{aligned}
+A_\text{aug}&=\begin{bmatrix}A&0\\0&I_5\end{bmatrix},\quad
+G_\text{aug}=\begin{bmatrix}G&0\\0&I_5\end{bmatrix},\\[2pt]
+Q_\text{aug}&=\mathrm{diag}\bigl(0.5,\;0.002,\;
 \underbrace{10^{-6},\dots,10^{-6}}_{5}\bigr).
+\end{aligned}
 \label{eq:aug}
 \end{equation}
 The $I_5$ block in $A_\text{aug}$ models each bias as a random walk.
@@ -506,6 +491,7 @@ the linear model cannot rule out a priori
 (Figure~\ref{fig:stress}).
 
 %==============================================================
+\FloatBarrier
 \section{Extended Kalman Filter}
 \label{sec:ekf}
 
@@ -709,33 +695,12 @@ decays by approximately $5\times$ during the $5$~s warm-up window
 
 \paragraph{Sensitivity to the initial covariance $P_0$.}
 The diffuse-prior values $P_0=\mathrm{diag}(100,1,25,0.5)$ are an
-intentional choice rather than a tuned one. To verify that downstream
-accuracy does not depend on this choice, $P_0$ was scaled jointly by a
-factor in $\{0.1,0.5,1,2,5\}$ and the warm-up-excluded mean
-arc-length error recomputed for each (Table~\ref{tab:p0-scan}). The
-five resulting errors agree to $1\times10^{-7}$~m, confirming that
-$P_0$ affects only the warm-up duration and not the long-run accuracy:
-the recursive filter forgets its initial covariance after the first
-several hundred steps regardless of how diffuse or how tight the
-diffuse-prior choice was.
-
-\begin{table}[!htbp]
-\centering
-\caption{$P_0$ sensitivity scan over five orders of scale. Run length
-$N=2000$ steps, warm-up $500$ steps.}
-\label{tab:p0-scan}
-\begin{tabular}{@{}cc@{}}
-\toprule
-$P_0$ scale & Steady-state arc-length error (m)\\
-\midrule
-$0.1$ & $0.26446$\\
-$0.5$ & $0.26446$\\
-$1.0$ & $0.26446$\\
-$2.0$ & $0.26446$\\
-$5.0$ & $0.26446$\\
-\bottomrule
-\end{tabular}
-\end{table}
+intentional choice rather than a tuned one. Scaling $P_0$ jointly
+by factors in $\{0.1,0.5,1,2,5\}$ leaves the warm-up-excluded mean
+arc-length error invariant to within $10^{-7}$~m: the recursive
+filter forgets its initial covariance after a few hundred steps
+regardless of how diffuse or tight the prior is, so the choice
+affects only the warm-up duration and not steady-state accuracy.
 
 \subsection{Monte-Carlo Statistical Validation}
 \label{sec:mc}
@@ -779,11 +744,9 @@ Velocity error (m/s)  & $1.753$ & $0.072$ & ---\\
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\textwidth]{B2_monte_carlo.png}
-\caption{Monte-Carlo validation (Cell~3). Left and centre: histograms
-of per-trial mean arc-length and lateral errors across $100$ trials.
-Right: arc-length error as a function of time, averaged across all
-trials, with $\pm1$ standard deviation band. The orange dotted line
-marks the end of the $5$~s warm-up window.}
+\caption{Monte-Carlo validation over $100$ trials: per-trial mean
+arc-length and lateral error histograms (left, centre) and the
+trial-averaged arc error vs.\ time with $\pm1$~std band (right).}
 \label{fig:cell3}
 \end{figure}
 
@@ -816,9 +779,11 @@ only surface under stress. The standard diagnostic for filter
 consistency~\cite{Sopasakis_6_tutorial} is the Normalized Innovation
 Squared (NIS) test:
 \begin{equation}
-\nu_t = y_t - h(\hat{z}_{t|t-1}),\qquad
-S_t   = C\Sigma_{t|t-1}C^{\!\top}+R,\qquad
-\mathrm{NIS}_t = \nu_t^{\!\top}S_t^{-1}\nu_t.
+\begin{aligned}
+\nu_t          &= y_t - h(\hat{z}_{t|t-1}),\\
+S_t            &= C_t\,\Sigma_{t|t-1}\,C_t^{\!\top}+R,\\
+\mathrm{NIS}_t &= \nu_t^{\!\top}\,S_t^{-1}\,\nu_t.
+\end{aligned}
 \label{eq:nis}
 \end{equation}
 If the filter is correctly tuned, $\mathrm{NIS}_t$ follows a chi-square
@@ -1051,6 +1016,7 @@ strong adversarial impulse beyond the physical $v_\ell$ bound.}
 \end{figure}
 
 %==============================================================
+\FloatBarrier
 \section{Comparison with Moving Horizon Estimation}
 \label{sec:mhe}
 
@@ -1066,16 +1032,19 @@ optimisation problem at each time step, minimising the Bayesian
 negative log-likelihood over a sliding window of $M$ most recent
 measurements,
 \begin{equation}
-\min_{\bm{x}_{0:M},\,\bm{w}_{0:M-1}}
-\;\ell_{x_0}(x_0)
-+\sum_{\tau=0}^{M-1}\ell_w(w_\tau)
-+\sum_{\tau=0}^{M}\ell_v\!\bigl(y_\tau-h(x_\tau)\bigr),
+\begin{aligned}
+\min_{\bm{x}_{0:M},\,\bm{w}_{0:M-1}}\quad
+&\ell_{x_0}(x_0)
+ +\sum_{\tau=0}^{M-1}\ell_w(w_\tau)
+ +\sum_{\tau=0}^{M}\ell_v\!\bigl(y_\tau-h(x_\tau)\bigr),\\[2pt]
+\text{s.t.}\quad
+&x_{\tau+1}=f(x_\tau,w_\tau),\quad
+ \ell\in[-2,2]~\text{m},\;v_s\in[0,25]~\text{m/s}.
+\end{aligned}
 \label{eq:mhe}
 \end{equation}
-subject to the same nonlinear dynamics constraint
-$x_{\tau+1}=f(x_\tau,w_\tau)$ used by the EKF prediction step in
-\eqref{eq:tpred}, with hard state bounds $\ell\in[-2,2]$~m and
-$v_s\in[0,25]$~m/s. The three cost components $\ell_{x_0}$, $\ell_w$,
+The dynamics constraint is the same nonlinear $f(\cdot)$ used by
+the EKF prediction step in \eqref{eq:tpred}. The three cost components $\ell_{x_0}$, $\ell_w$,
 $\ell_v$ correspond to the arrival cost, process-noise penalty and
 measurement-residual penalty used in the course notebook. The MHE and
 the EKF therefore share the identical truth model and identical
@@ -1146,6 +1115,7 @@ Section~\ref{sec:motion}, so MHE's theoretical benefit does not
 translate to measurable improvement here.
 
 %==============================================================
+\FloatBarrier
 \section{Bias-Augmented EKF: Implementation and Verification}
 \label{sec:bias-aug}
 
@@ -1279,6 +1249,7 @@ Mean lat err (m)                & $0.024$ & $0.024$ & $0.024$
 \end{table}
 
 %==============================================================
+\FloatBarrier
 \section{Computational Complexity and Real-time Feasibility}
 \label{sec:complexity}
 
@@ -1306,6 +1277,7 @@ runtime and the implementation is detectable on every notebook
 execution.
 
 %==============================================================
+\FloatBarrier
 \section{Conclusion}
 \label{sec:conclusion}
 
@@ -1424,7 +1396,7 @@ stress test), and NIS check (commit \texttt{0bb2c33}); all built on
 Chenhui Cui's modelling. &
 Modelling-side code freeze.\\
 \hline
-25 Apr (pm) & solo &
+25 Apr (pm) & individual &
 Final consolidated estimator notebook (16 unified patches); all
 figures regenerated; \code{results\_summary.json} exported. &
 Integrated final report; final proofreading.\\
@@ -1434,7 +1406,7 @@ Integrated final report; final proofreading.\\
 
 \subsubsection*{A.2 Version control and collaboration}
 The team used \texttt{git} and GitHub for version control:
-\url{https://github.com/cuichenhui9-eng/ELE8101-CW2}.
+\href{https://github.com/cuichenhui9-eng/ELE8101-CW2}{\texttt{github.com/cuichenhui9-eng/ELE8101-CW2}}.
 Modelling work was developed on the \texttt{ChenhuiCui} branch,
 estimator work on the \texttt{WeitingWu} branch, and final integration
 was merged into \texttt{main}. Tasks were tracked through GitHub
@@ -1445,32 +1417,25 @@ Issue~\#3.
 \subsubsection*{A.3 Individual contributions}
 
 \textbf{Chenhui Cui.}
-Track geometry; bound-respecting nonlinear vehicle motion model
-(subsequently adopted as the estimator's truth simulator); GDOP-based
-five-beacon optimisation including failure-mode and
-installation-error sensitivity analyses; noise-parameter validation;
-state-augmentation formulation for sensor bias; the mathematical
-foundations communicated to the estimator side at the 19 Apr and
-21 Apr meetings (corrected $R_B$ and beacon coordinates after the
-inner-wall-radius identification; the unified $f_{\mathrm{dynamics}}$
-replacing the earlier post-hoc-clipping model); Section~1--2 of the
-report. Final integration: consolidation of the estimator notebook,
-addition of the \code{numpy.random.default\_rng} reproducibility
-chain, regeneration of all figures, and harmonised cross-checking of
-the integrated report against \code{results\_summary.json}.
+Track geometry; bound-respecting nonlinear vehicle motion model;
+GDOP-based five-beacon optimisation; noise-parameter validation;
+state-augmentation formulation for sensor bias; Sections~1--2 of
+the report; final integration of the consolidated estimator
+notebook, regeneration of all figures, and the
+\code{results\_summary.json} cross-check.
 
 \textbf{Weiting Wu.}
-Original B1--B4 estimator structure: single-run EKF, $100$-trial
+Original B1--B4 estimator structure (single-run EKF, $100$-trial
 Monte-Carlo validation, NIS consistency check, MHE comparison,
-beacon-count ablation, and near-boundary estimator tests; first-pass
-narrative for the estimator chapter (Sections~3--6). These commits
-are preserved on the \texttt{WeitingWu} branch.
+beacon-count ablation, near-boundary stress test); first-pass
+narrative for Sections~3--6. These commits are preserved on the
+\texttt{WeitingWu} branch.
 
-\textbf{Joint work.}
-Definition of the modelling/estimator interface; review of corrections
-after the small-arc-radius fix; figure selection; abstract and
-conclusion; final proofreading; the \code{README.md},
-\code{AUTHORS.md} and \code{.mailmap} files in the repository.
+\textbf{Joint.}
+Modelling--estimator interface definition; mid-project re-runs
+under corrected geometry; figure selection; abstract and
+conclusion; final proofreading; the repository's
+\code{README.md}, \code{AUTHORS.md} and \code{.mailmap}.
 
 \subsubsection*{A.4 Team reflection}
 The collaboration worked because the modelling/estimator interface
