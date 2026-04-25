@@ -1391,18 +1391,22 @@ Weiting: B4 EKF chapter draft.
 Both: report skeleton and symbol table.\\
 \hline
 19 Apr & online &
-Identified that $\rho=20$~m is the inner-wall radius at $B$, so
-$R_B=\rho+w=22$~m, not $20$~m. &
-Both: re-run all simulations under corrected geometry
-(commits \texttt{b037600}, \texttt{ee33948}).\\
+Chenhui identified that $\rho=20$~m is the inner-wall radius at $B$,
+so $R_B=\rho+w=22$~m (not $20$~m); the corrected $R_B$ value, the
+re-optimised beacon coordinates, and the updated measurement-noise
+covariance $R$ were communicated to the estimator side. &
+Weiting: update the estimator's $R_B$, $R$ and beacon coordinates,
+and re-run B1--B3 (commits \texttt{b037600}, \texttt{ee33948}).\\
 \hline
 21 Apr & online &
-Re-runs revealed that hard clipping on $\ell$ was masking model
-behaviour near the wall. &
-Major modelling revision: bound-respecting nonlinear stiffness
-$k(\ell)$ and $\tanh$ saturations (commit \texttt{495da79});
-$Q\!\to\!\mathrm{diag}(0.5,0.002)$;
-Lyapunov steady-state cross-check added.\\
+Chenhui designed the bound-respecting nonlinear vehicle model
+(position-dependent stiffness $k(\ell)$ and $\tanh$ saturations on
+$v_s, v_\ell$, commit \texttt{495da79}) to replace the earlier
+post-hoc clipping surrogate, and updated $Q$ to
+$\mathrm{diag}(0.5,0.002)$ to match the new dynamics; the Lyapunov
+steady-state cross-check was added on the modelling side. &
+Weiting: import the new $f_{\mathrm{dynamics}}$ into the estimator
+notebook and re-tune EKF parameters to match the revised model.\\
 \hline
 24 Apr & in person &
 PR \#2 (modelling polish) and PR \#4 (estimator sync) merged.
@@ -1446,13 +1450,19 @@ Issue~\#3.
 \subsubsection*{A.3 Individual contributions}
 
 \textbf{Chenhui Cui.}
-Track geometry; bound-respecting nonlinear vehicle motion model;
-GDOP-based beacon optimisation including failure-mode and
+Track geometry; bound-respecting nonlinear vehicle motion model
+(subsequently adopted as the estimator's truth simulator); GDOP-based
+five-beacon optimisation including failure-mode and
 installation-error sensitivity analyses; noise-parameter validation;
-state-augmentation formulation for sensor bias; Section~1--2 of the
+state-augmentation formulation for sensor bias; the mathematical
+foundations communicated to the estimator side at the 19 Apr and
+21 Apr meetings (corrected $R_B$ and beacon coordinates after the
+inner-wall-radius identification; the unified $f_{\mathrm{dynamics}}$
+replacing the earlier post-hoc-clipping model); Section~1--2 of the
 report. Final integration: consolidation of the estimator notebook,
-regeneration of all figures, harmonisation and final cross-checking
-of the integrated report against \code{results\_summary.json}.
+addition of the \code{numpy.random.default\_rng} reproducibility
+chain, regeneration of all figures, and harmonised cross-checking of
+the integrated report against \code{results\_summary.json}.
 
 \textbf{Weiting Wu.}
 Original B1--B4 estimator structure: single-run EKF, $100$-trial
