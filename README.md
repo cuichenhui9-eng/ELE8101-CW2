@@ -12,9 +12,10 @@
 
 | File | Member | Description |
 |---|---|---|
-| `modelling_ChenhuiCui.ipynb` | A | Track geometry (A1), vehicle motion model (A2), beacon placement (A3), noise validation (A4), sensor bias handling (A5) |
-| `ekf.ipynb` | B | EKF implementation and simulation (B1–B4) |
-| `figures/` | Both | Generated plots referenced in the report |
+| `Modelling_ChenhuiCui.ipynb` | A | Track geometry (A1), vehicle motion model (A2), beacon placement (A3), noise validation (A4), sensor bias handling (A5) |
+| `Estimator_WeitingWu.ipynb` | B | EKF implementation and simulation (B1–B4) |
+| `Figures_ChenhuiCui/` | A | Plots produced by Member A's modelling notebook |
+| `Figures_WeitingWu/` | B | Plots produced by Member B's estimator notebook |
 
 ---
 
@@ -25,12 +26,13 @@ pip install numpy matplotlib casadi
 
 ### Member A — Modelling
 
-Open and run all cells in `modelling_ChenhuiCui.ipynb` (top-to-bottom).
-All figures are saved to `figures/` and referenced in the report.
+Open and run all cells in `Modelling_ChenhuiCui.ipynb` (top-to-bottom).
+All figures are saved to `Figures_ChenhuiCui/` and referenced in the report.
 
 ### Member B — EKF
 
-Open and run all cells in `ekf.ipynb`.
+Open and run all cells in `Estimator_WeitingWu.ipynb`.
+All figures are saved to `Figures_WeitingWu/`.
 
 ---
 
@@ -99,7 +101,7 @@ Monte Carlo installation-error analysis (200 realisations, σ = 5 m per coordina
 
 - `main` — integrated version for submission
 - `ChenhuiCui` — Member A (modelling) development branch
-- `member-B-Weiting-Wu` — Member B (EKF) development branch
+- `WeitingWu` — Member B (EKF) development branch
 
 ---
 
