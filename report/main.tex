@@ -126,13 +126,13 @@ $\alpha=\arcsin\bigl((R_A-R_B)/d\bigr)=15.0701^{\circ}$, giving the
 segment lengths
 \begin{equation}
 \begin{aligned}
-l_{\text{tan}}   &= \sqrt{d^2-(R_A-R_B)^2} &&= 96.5609~\text{m},\\
-l_{\text{arc},A} &= R_A(\pi+2\alpha)       &&= 176.0466~\text{m},\\
-l_{\text{arc},B} &= R_B(\pi-2\alpha)       &&= 57.5421~\text{m},
+l_{\text{tan}}   &= \sqrt{d^2-(R_A-R_B)^2} = 96.5609~\text{m},\\
+l_{\text{arc},A} &= R_A(\pi+2\alpha) = 176.0466~\text{m},\\
+l_{\text{arc},B} &= R_B(\pi-2\alpha) = 57.5421~\text{m},
 \end{aligned}
 \label{eq:seglen}
 \end{equation}
-and a total centreline perimeter
+giving a total centreline perimeter
 $L=2l_{\text{tan}}+l_{\text{arc},A}+l_{\text{arc},B}=426.7104$~m.
 
 The vehicle position is parameterised by arc-length $s\in[0,L)$
@@ -632,8 +632,10 @@ longitudinal velocity (50\% of the nominal speed), and $0.707$~m/s on
 lateral velocity (slightly above the $0.55$~m/s physical bound). The
 diffuseness is deliberate: the recursive filter forgets its prior
 within several hundred steps, as the closed-loop covariance trace of
-Figure~\ref{fig:p-conv} (Section~\ref{sec:single-run}) and the
-$P_0$-sensitivity scan of Table~\ref{tab:p0-scan} both confirm.
+Figure~\ref{fig:p-conv} (Section~\ref{sec:single-run}) and a
+five-point $P_0$-scaling scan (steady-state arc error invariant
+to within $10^{-7}$~m across $0.1\times$--$5\times P_0$) both
+confirm.
 
 The remaining design parameters use ``hard'' problem-statement
 quantities wherever possible:
