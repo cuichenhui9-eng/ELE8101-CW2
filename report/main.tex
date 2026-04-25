@@ -95,8 +95,9 @@ Filter is implemented with prediction-step Jacobians obtained from
 CasADi automatic differentiation at every step, ensuring the
 predictor and the simulator share identical dynamics. Across $100$
 Monte-Carlo trials the filter achieves a mean arc-length error of
-$0.226$~m, approximately $6.1$ times smaller than the
-single-measurement GDOP benchmark, and passes a Normalized Innovation
+$0.226$~m, well below the $\sigma_y\overline{\mathrm{GDOP}}=
+1.379$~m single-measurement GDOP scale, and passes a Normalized
+Innovation
 Squared consistency check (empirical mean $4.994$, $95\%$ of samples
 in the $95\%$ confidence band). A Moving Horizon Estimator with the
 same nonlinear constraint exceeds the $10$~ms sampling budget by a
@@ -201,12 +202,18 @@ G=\begin{bmatrix}0&0\\0&0\\1&0\\0&1\end{bmatrix},
 where the $(3,3)$ entry is the pre-saturation autoregressive
 coefficient $\phi_s=0.999$ multiplied by the local slope of the
 smooth $\tanh$ speed-bounding map (so $\phi_s\,\mathrm{sech}^2(\zeta_s)
-\approx 0.961$ at $v_s=10$~m/s), $\phi_1=0.9$ and $k_2=10$. The four
+\approx 0.961$ at $v_s=10$~m/s, with $\zeta_s$ the argument of
+the $\tanh$ saturation evaluated at the nominal speed),
+$\phi_1=0.9$ and $k_2=10$. Process noise enters only the two
+velocity channels, so $Q\in\mathbb{R}^{2\times 2}$ and $G\in
+\mathbb{R}^{4\times 2}$; the $s$ and $\ell$ states are propagated
+through the deterministic kinematic integrators. The four
 eigenvalues $\{0.9113,0.9887,1,0.9601\}$ all satisfy $|\lambda|\le1$;
-the unit eigenvalue corresponds to the integrator on $s$, the
-remaining modes are strictly stable. The matrix $G$ is the
-\emph{unsaturated} reference noise-injection matrix; the EKF time
-update of Section~\ref{sec:ekf-formulation} uses the local
+the unit eigenvalue is the open-loop arc-length integrator and is not
+strictly stable, so the Lyapunov cross-check below is applied only
+to the strictly stable $[\ell,v_s,v_\ell]$ sub-system. The matrix
+$G$ is the \emph{unsaturated} reference noise-injection matrix; the
+EKF time update of Section~\ref{sec:ekf-formulation} uses the local
 noise-input Jacobian $L_t=\partial f/\partial w|_{\hat{z}_{t|t}}$
 instead, whose third diagonal entry carries the same
 $\mathrm{sech}^2$ saturation slope as $A_t$. $A_0$ and $G$ are used
@@ -471,12 +478,17 @@ independent direction through the position--velocity integrator. This
 static test therefore does \emph{not} prove full joint observability
 of the vehicle state and all five biases at any single instant, and
 the augmented filter is not claimed to be globally observable from a
-single linearisation. The argument is instead the weaker but more
-honest one: $v_\ell$ is recovered by the EKF through the dynamic
-coupling ($Ce_{v_\ell}=0$ but $CA_\text{aug}e_{v_\ell}\ne0$), and the
-augmented filter's practical bias-estimation ability is verified
-empirically over a moving trajectory with injected biases in
-Section~\ref{sec:bias-aug}~\cite{Hautus1969,Simon2006}.
+single linearisation. The rank-$8$ result is, however, a
+frozen-linearisation diagnostic, not a statement about the moving
+nonlinear system over a complete lap: along a trajectory the
+measurement Jacobian $C_t$ changes as the vehicle moves relative to
+the five beacons, and information accumulates through the
+time-varying observability Gramian involving $C_t\Phi_{t,k}$. A
+direction that is weakly observable in any single frozen geometry can
+therefore become identifiable over the full trajectory; the
+recovery of all five injected biases under noise in
+Section~\ref{sec:bias-aug} provides this trajectory-level empirical
+verification~\cite{Simon2006}.
 
 \paragraph{Steady-state cross-check.}
 Following~\cite{KalmanI}, for the strictly stable
@@ -758,22 +770,26 @@ trial-averaged arc error vs.\ time with $\pm1$~std band (right).}
 \label{fig:cell3}
 \end{figure}
 
-Two independent comparisons against the modelling-side theoretical
-predictions support near-optimal operation. First, the recursive EKF
-arc-length error of $0.226$~m is approximately $6.1\times$ smaller
-than the single-measurement GDOP benchmark
-$\sigma_y\cdot\overline{\mathrm{GDOP}}=1.379$~m of
-Section~\ref{sec:beacon}; this is consistent with the temporal
-information integration available to a recursive filter and does not
-violate the per-sample bound. Second, the Lyapunov analysis of
-Section~\ref{sec:bias} gives theoretical references
-$\sigma_{\ell,\infty}=0.032$~m and $\sigma_{v_\ell,\infty}=0.103$~m/s
-for the strictly stable lateral subsystem; the EKF's empirical mean
-lateral error of $0.022$~m is comparable to and slightly below
-$\sigma_{\ell,\infty}$, with the deviation within the $0.003$~m
-across-trial standard deviation. The two comparisons together support
-the conclusion that the recursive filter approaches the theoretical
-floor on lateral accuracy.
+Two independent comparisons against the modelling-side references
+support near-optimal operation. The first is a scale check rather
+than a violated bound: the recursive EKF arc-length error of
+$0.226$~m sits well below the
+$\sigma_y\cdot\overline{\mathrm{GDOP}}=1.379$~m single-measurement
+GDOP scale of Section~\ref{sec:beacon}. This comparison is only a
+reference: $\sigma_y\overline{\mathrm{GDOP}}$ is a two-dimensional,
+single-shot position benchmark, whereas the reported EKF statistic
+is a recursive along-track error. The smaller EKF value is
+attributed jointly to temporal filtering and to the
+one-dimensional projection, not to a violation of the GDOP /
+Fisher-information benchmark. The second comparison is tighter:
+the Lyapunov analysis of Section~\ref{sec:bias} gives references
+$\sigma_{\ell,\infty}=0.032$~m and $\sigma_{v_\ell,\infty}=
+0.103$~m/s for the strictly stable lateral subsystem, and the EKF's
+empirical mean lateral error of $0.022$~m is comparable to and
+slightly below $\sigma_{\ell,\infty}$, with the deviation within
+the $0.003$~m across-trial standard deviation. Together the two
+comparisons indicate that the recursive filter operates close to
+the modelling-side covariance reference for lateral accuracy.
 
 \subsection{NIS Consistency Check}
 \label{sec:nis}
@@ -1109,22 +1125,23 @@ sampling budget (red dashed); zero SLSQP failures in $490$ solves.}
 \label{fig:cell4}
 \end{figure}
 
-The MHE achieves comparable arc-length accuracy but markedly worse
-lateral accuracy ($0.229$~m, an order of magnitude larger than the
-EKF's $0.022$~m). More fundamentally, the mean MHE solve time of
-$1275$~ms exceeds the $10$~ms sampling budget by a factor of $128$,
-rendering MHE incompatible with real-time operation at $100$~Hz on
-this hardware. The EKF requires only matrix multiplications, a
-$5\times5$ linear solve, and four CasADi-evaluated Jacobians per step,
-completing in $0.43$~ms (Section~\ref{sec:complexity}). On these
-grounds the EKF is selected as the primary estimator. MHE could
-become competitive with a problem-specific QP solver exploiting the
-banded horizon structure, but this is outside the scope of the
-current work. The conclusion is that, for this problem, the
-structural advantage MHE offers (hard bound enforcement) is already
-provided implicitly by the bound-respecting dynamics of
-Section~\ref{sec:motion}, so MHE's theoretical benefit does not
-translate to measurable improvement here.
+The MHE achieves comparable arc-length accuracy but a larger lateral
+error ($0.229$~m versus the EKF's $0.022$~m). This larger lateral
+error should not be read as a fundamental limitation of MHE: it is
+most likely an artefact of implementation choices made for
+computational tractability, namely the short $M=10$ horizon, a fixed
+diagonal arrival-cost covariance rather than a Kalman-derived
+arrival covariance, and a local SLSQP solve. A longer horizon or an
+arrival cost propagated from the EKF covariance would be expected to
+narrow the gap, but at the cost of further increasing runtime. More
+fundamentally, the mean MHE solve time of $1275$~ms exceeds the
+$10$~ms sampling budget by a factor of $128$, making MHE
+incompatible with real-time operation at $100$~Hz on this hardware.
+The EKF, in contrast, completes in $0.43$~ms
+(Section~\ref{sec:complexity}). The comparison therefore supports
+the practical conclusion that this implemented MHE is not real-time
+feasible on this problem, rather than a general claim that MHE is
+less accurate than EKF.
 
 %==============================================================
 \FloatBarrier
@@ -1277,18 +1294,19 @@ augmented EKF, the state-side cost rises modestly to
 $O(n_y^2 n_\text{aug})$ with $n_\text{aug}=9$. Each operation
 involves only small dense matrices and one CasADi call.
 
-A direct \texttt{timeit} benchmark of the two EKF primitives over
-$500$ repetitions in the setup-cell environment of
+A direct \texttt{timeit} benchmark of the two $4$-state EKF
+primitives over $500$ repetitions in the setup-cell environment of
 \code{Estimator.ipynb} gives mean per-call times of
 $t_{\text{meas}}=0.20$~ms and $t_{\text{time}}=0.23$~ms, for a
-combined per-step EKF runtime of $0.43$~ms. The sampling period is
-$h=0.01$~s, giving a per-step budget of $10$~ms; the EKF therefore
-uses $4.3\%$ of the budget, leaving more than an order of magnitude
-of headroom for embedded deployment, additional sensor fusion, or the
-$9$-state augmented variant. This benchmark is exported to
-\code{results\_summary.json} so any drift between the reported
-runtime and the implementation is detectable on every notebook
-execution.
+combined per-step EKF runtime of $0.43$~ms ($4.3\%$ of the $10$~ms
+sampling budget). The $9$-state augmented variant has not been
+benchmarked separately here; based on the $O(n_y^2 n_\text{aug})$
+scaling above and the small additional CasADi calls per step, it is
+expected to remain inside the $10$~ms budget, but this should be
+confirmed by a direct measurement before any embedded deployment.
+The $4$-state benchmark is exported to \code{results\_summary.json}
+so any drift between the reported runtime and the implementation is
+detectable on every notebook execution.
 
 %==============================================================
 \FloatBarrier
@@ -1308,9 +1326,10 @@ sensor-bias handling. The estimator chapter implemented the EKF with
 prediction-step Jacobians $A_t$ and $L_t$ obtained from CasADi
 automatic differentiation at every step from the same dynamics that
 serve as the truth simulator. Across $100$ Monte-Carlo trials the
-filter achieved a mean arc-length error of $0.226$~m, approximately
-$6.1\times$ smaller than the single-measurement GDOP benchmark; it
-passed a Normalized Innovation Squared consistency check (empirical
+filter achieved a mean arc-length error of $0.226$~m, well below the
+single-measurement $\sigma_y\overline{\mathrm{GDOP}}=1.379$~m scale
+reference; it passed a Normalized Innovation Squared consistency
+check (empirical
 mean $4.994$, $95\%$ of samples in the $95\%$ band); and its
 closed-loop covariance trace decayed by approximately $5\times$ over
 the warm-up window. A Moving Horizon Estimator with the same
@@ -1321,6 +1340,17 @@ within $0.04$~m, with sensitivity to the bias-drift variance
 remaining below $0.12$~m across four decades. The complete EKF
 pipeline executes in $0.43$~ms per step.
 
+\paragraph{Working assumptions and limitations.}
+The problem statement specifies only the range standard deviation
+$\sigma_y=1.5$~m and not the full probability density of the
+ranging error. The EKF, NIS analysis and MHE arrival cost in this
+report all use a Gaussian working model on $v$, which is standard
+for covariance-based Kalman filtering but remains an assumption:
+heavy-tailed multipath or mixture-noise statistics would call for
+robust alternatives such as innovation gating, Huber losses, or
+particle / robust filtering. Verifying robustness under non-Gaussian
+range noise is left for future work.
+
 \paragraph{Future work.}
 Opportunities for further work, not pursued here due to scope
 constraints, include: (a) combining the EKF and MHE into a warm-start
@@ -1330,7 +1360,8 @@ with a code-generated QP solver tailored to the banded horizon
 structure, which could close the real-time gap by one to two orders of
 magnitude; (c) extending the bias model from a pure random walk to a
 first-order Markov process, accommodating slowly varying drift
-(e.g.\ thermal) in addition to constant offset.
+(e.g.\ thermal) in addition to constant offset; and (d) testing
+robustness under heavy-tailed or mixture range-noise distributions.
 
 %==============================================================
 \section*{AI Usage Statement}
@@ -1476,11 +1507,6 @@ R.~B. Langley, ``Dilution of Precision,''
 \bibitem{Simon2006}
 D. Simon, \emph{Optimal State Estimation: Kalman, $H_\infty$, and
 Nonlinear Approaches}. Hoboken, NJ: Wiley, 2006.
-
-\bibitem{Hautus1969}
-M.~L.~J. Hautus, ``Controllability and observability conditions of
-linear autonomous systems,'' \emph{Indagationes Mathematicae
-(Proceedings)}, vol.~72, no.~5, pp.~443--448, 1969.
 
 \bibitem{Nemhauser1978}
 G.~L. Nemhauser, L.~A. Wolsey and M.~L. Fisher, ``An analysis of
