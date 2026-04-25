@@ -75,9 +75,7 @@
 \title{\vspace{-1.5cm}
        \textbf{ELE8101: Estimation Theory}\\[2pt]
        \large Coursework 2 --- Vehicle State Estimation on a Racing Track}
-\author{Chenhui Cui\thanks{Member~A, modelling and final integration}
-        \and
-        Weiting Wu\thanks{Member~B, original estimator implementation}}
+\author{Chenhui Cui \quad\quad Weiting Wu}
 \date{April 2026}
 
 %==============================================================
@@ -186,23 +184,27 @@ everywhere, preserving the validity of the EKF linearisation used in
 Section~\ref{sec:ekf}.
 
 \paragraph{Linearisation at the nominal operating point.}
-At the nominal operating point ($\ell=0$, $v_\ell=0$) the
-bound-respecting dynamics reduce to the closed-form linearisation
+At the nominal operating point ($\ell=0$, $v_\ell=0$, $v_s=10$~m/s)
+the effective local Jacobian of the bound-respecting dynamics
+evaluates to
 \begin{equation}
 A_0=\begin{bmatrix}
 1 & 0 & h & 0\\
 0 & 1 & 0 & h\\
-0 & 0 & \phi_s & 0\\
+0 & 0 & \phi_s\,\mathrm{sech}^2(\zeta_s) & 0\\
 0 & -hk_2 & 0 & \phi_1
 \end{bmatrix},
 \qquad
 G=\begin{bmatrix}0&0\\0&0\\1&0\\0&1\end{bmatrix},
 \label{eq:A0}
 \end{equation}
-with $\phi_s=0.999$, $\phi_1=0.9$, $k_2=10$. The eigenvalues
-$\{0.9113,0.9887,1,0.9601\}$ all satisfy $|\lambda|\le1$; the unit
-eigenvalue corresponds to the integrator on $s$, the remaining modes
-are strictly stable. $A_0$ is used here only for the Lyapunov
+where the $(3,3)$ entry is the pre-saturation autoregressive
+coefficient $\phi_s=0.999$ multiplied by the local slope of the
+smooth $\tanh$ speed-bounding map (so $\phi_s\,\mathrm{sech}^2(\zeta_s)
+\approx 0.961$ at $v_s=10$~m/s), $\phi_1=0.9$ and $k_2=10$. The four
+eigenvalues $\{0.9113,0.9887,1,0.9601\}$ all satisfy $|\lambda|\le1$;
+the unit eigenvalue corresponds to the integrator on $s$, the
+remaining modes are strictly stable. $A_0$ is used here only for the Lyapunov
 steady-state cross-check of Section~\ref{sec:bias}; the EKF
 prediction step itself uses the local Jacobian
 $A_t=\partial f/\partial z|_{\hat{z}_{t|t}}$ at every step, as
@@ -289,11 +291,12 @@ Cram\'er--Rao lower bound satisfies
 \label{eq:crlb}
 \end{equation}
 Thus GDOP is the geometry-only scalar summary of the Fisher
-information available from the beacon layout. An unbiased efficient
-estimator cannot achieve position RMSE below
-$\sigma_y\cdot\overline{\mathrm{GDOP}}=1.379$~m on average over the
-track, setting a lower bound against which the EKF in
-Section~\ref{sec:ekf} is benchmarked.
+information available from a single set of distance measurements.
+The quantity $\sigma_y\cdot\overline{\mathrm{GDOP}}=1.379$~m is used
+in Section~\ref{sec:mc} as a single-measurement GDOP benchmark, that
+is, a geometry-derived reference for isolated range readings rather
+than a lower bound on the recursive EKF, which integrates information
+across many time steps through the motion model.
 
 \paragraph{Algorithm and beacon count.}
 Candidates are drawn from a $20\times16$ grid restricted to
@@ -512,8 +515,8 @@ $z_\text{aug}=[s,\ell,v_s,v_\ell,\beta_1,\dots,\beta_5]^{\!\top}$ with its
 noise-free $h_\text{aug}$ verification (Section~\ref{sec:bias},
 implemented numerically in Section~\ref{sec:bias-aug}); and the
 full nonlinear truth model $f(\cdot)$ of Section~\ref{sec:motion},
-used in the near-boundary stress test of
-Section~\ref{sec:bdry}.
+used as the simulator throughout all estimator validation
+experiments in this chapter.
 
 \subsection{EKF Formulation}
 \label{sec:ekf-formulation}
@@ -917,8 +920,10 @@ answer the complementary question relevant for the estimator:
 \emph{``does the EKF still track the vehicle accurately when the
 vehicle operates near the boundary?''} The latter matters because the
 position-dependent stiffness $k(\ell)$ diverges as $|\ell|\to2$~m,
-so the EKF's linear prediction step (which uses $A_0$ at the nominal
-point) is most stressed in this regime.
+so the EKF's local linearisation is most strongly tested in this
+regime: the prediction-step Jacobian
+$A_t=\partial f/\partial z|_{\hat{z}_{t|t}}$ changes rapidly as
+$|\ell|$ approaches the boundary.
 
 The present section provides the estimator-side counterpart to the
 simulator-side stress test, completing a closed-loop validation:
@@ -1062,7 +1067,8 @@ nominal $10$~m/s, a natural scale for a finite-lookback arc-length
 estimator and a deliberately short window: SLSQP cost grows
 super-linearly in $M$, so a longer horizon would only widen the
 real-time gap reported below. If even this short horizon is
-infeasible, no longer one is. The arrival cost uses the previous MHE
+infeasible, a longer horizon would not improve real-time
+feasibility either. The arrival cost uses the previous MHE
 output as mean with a fixed diagonal prior covariance
 (self-bootstrapping). The constraint Jacobian
 $\partial[x_{\tau+1}-f(x_\tau,w_\tau)]/\partial(x,w)$ is constructed
@@ -1159,7 +1165,8 @@ same pattern as the baseline $4$-state primitives.
 
 To verify the augmented filter under noise, a $43$~s single-lap
 simulation was run with the bias vector
-$[+0.5,-0.3,+0.2,+0.8,-0.4]$~m injected on the five beacons (the same
+$[+0.5,\;-0.3,\;+0.2,\;+0.8,\;-0.4]$~m injected on the five beacons
+(the same
 test vector used in Section~\ref{sec:bias} for the symbolic
 $h_\text{aug}$ verification). Two filters were run in parallel on the
 identical biased measurement stream: the $9$-state augmented EKF, and
