@@ -1391,13 +1391,15 @@ Weiting: B4 EKF chapter draft.
 Both: report skeleton and symbol table.\\
 \hline
 19 Apr & online &
-Chenhui Cui identified that $\rho=20$~m is the inner-wall radius at
-$B$, so $R_B=\rho+w=22$~m (not $20$~m); the corrected $R_B$, the
-re-optimised five-beacon coordinates, and the updated
-measurement-noise covariance $R$ were communicated to the estimator
-side. &
-Weiting Wu: update the estimator's $R_B$, $R$ and beacon coordinates
-and re-run B1--B3 (commits \texttt{b037600}, \texttt{ee33948}).\\
+Reviewed the estimator side following Chenhui Cui's modelling-side
+rewrite of 1~April (commit \texttt{590cf6b}: ``A1--A3 complete
+rewrite with corrected $R_B=22$~m, GDOP $<1$, $30$~m installation
+boundary''), which had identified that $\rho=20$~m is the inner-wall
+radius at $B$ and re-optimised the five-beacon coordinates. The
+corrected $R_B$, beacon coordinates and $R$ had not yet been
+fully propagated into Weiting Wu's Step~4. &
+Weiting Wu: correct Step~4 with the new $R_B$ and beacon coordinates
+(commit \texttt{b037600}) and re-run B1--B3.\\
 \hline
 21 Apr & online &
 Chenhui Cui designed the bound-respecting nonlinear vehicle model
@@ -1405,7 +1407,11 @@ Chenhui Cui designed the bound-respecting nonlinear vehicle model
 $v_s, v_\ell$, commit \texttt{495da79}) to replace the earlier
 post-hoc clipping surrogate, and updated $Q$ to
 $\mathrm{diag}(0.5,0.002)$ to match; the Lyapunov steady-state
-cross-check was added on the modelling side. &
+cross-check was added on the modelling side. Weiting Wu also
+applied a further $R_B$ geometry refresh on the estimator side
+(commit \texttt{ee33948}: ``Fix $R_B$ geometry, update beacon
+coordinates, add nominal velocity drift in the EKF internal
+model''). &
 Weiting Wu: import the new $f_{\mathrm{dynamics}}$ into the
 estimator notebook and re-tune EKF parameters to match the revised
 model.\\
