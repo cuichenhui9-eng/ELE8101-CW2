@@ -1193,7 +1193,7 @@ the $4$-state EKF of Section~\ref{sec:ekf} (baseline that ignores
 bias). Results are in Table~\ref{tab:bias} and
 Figure~\ref{fig:cell5}.
 
-\begin{table}[!htbp]
+\begin{table}[H]
 \centering
 \caption{Bias recovery (top) and trajectory accuracy (bottom). All
 five biases recovered to within $0.0354$~m; the augmented filter
@@ -1206,7 +1206,7 @@ reduces mean arc-length error by a factor of $2.1$.}
 \midrule
 $\beta_1$ & $+0.500$ & $+0.473$ & $-0.0270$\\
 $\beta_2$ & $-0.300$ & $-0.282$ & $+0.0176$\\
-$a_3$ & $+0.200$ & $+0.183$ & $-0.0167$\\
+$\beta_3$ & $+0.200$ & $+0.183$ & $-0.0167$\\
 $\beta_4$ & $+0.800$ & $+0.765$ & $-0.0354$\\
 $\beta_5$ & $-0.400$ & $-0.419$ & $-0.0195$\\
 \bottomrule
@@ -1222,7 +1222,7 @@ $9$-state EKF (bias estimated)  & $0.239$ & $0.0234$\\
 \end{tabular}
 \end{table}
 
-\begin{figure}[!htbp]
+\begin{figure}[H]
 \centering
 \includegraphics[width=\textwidth]{B4_bias_augmented.png}
 \caption{$9$-state augmented EKF (green) versus $4$-state baseline
