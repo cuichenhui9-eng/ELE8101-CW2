@@ -1186,8 +1186,10 @@ same pattern as the baseline $4$-state primitives.
 
 To verify the augmented filter under noise, a $43$~s single-lap
 simulation was run with the bias vector
-$[+0.5,\;-0.3,\;+0.2,\;+0.8,\;-0.4]$~m injected on the five beacons
-(the same
+\begin{equation*}
+\beta = [\,+0.5,\;-0.3,\;+0.2,\;+0.8,\;-0.4\,]^{\!\top}~\text{m}
+\end{equation*}
+injected on the five beacons (the same
 test vector used in Section~\ref{sec:bias} for the symbolic
 $h_\text{aug}$ verification). Two filters were run in parallel on the
 identical biased measurement stream: the $9$-state augmented EKF, and
