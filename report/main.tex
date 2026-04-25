@@ -1355,47 +1355,48 @@ detectability was rewritten conservatively (Section~\ref{sec:bias}).
 \subsubsection*{A.1 Meeting minutes}
 
 Table~\ref{tab:minutes} summarises the team's progress between the
-kick-off (24 March 2026) and final submission. Commit hashes refer to
-the GitHub repository in~A.2.
+kick-off (24 March 2026) and final submission. All meetings were
+attended by Chenhui Cui and Weiting Wu unless otherwise indicated;
+commit hashes refer to the GitHub repository in~A.2.
 
 \begin{table}[!htbp]
 \centering
 \footnotesize
 \caption{Summary of meeting minutes.}
 \label{tab:minutes}
-\renewcommand{\arraystretch}{1.25}
-\begin{tabular}{|p{1.1cm}|p{2.3cm}|p{4.4cm}|p{6.0cm}|}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{|p{1.4cm}|p{1.5cm}|p{4.6cm}|p{6.0cm}|}
 \hline
-\textbf{Date} & \textbf{Participants} & \textbf{Work completed} &
+\textbf{Date} & \textbf{Mode} & \textbf{Work completed} &
 \textbf{Follow-up actions}\\
 \hline
-24 Mar & Chenhui Cui, Weiting Wu (in person) &
+24 Mar & in person &
 Kick-off. Agreed on Python/Jupyter/CasADi workflow, repository
 structure, shared random seed $42$, and report page budget. &
 Chenhui: track geometry and state-space draft.
 Weiting: 1D/2D EKF practice and estimator skeleton.
 Both: agree interface \texttt{(s\_to\_xy, s\_to\_normal)}.\\
 \hline
-30 Mar & Chenhui Cui, Weiting Wu (online) &
+30 Mar & online &
 A1--A3 first pass complete; B1 Steps~1--4 complete; first plan document
 drafted. &
 Chenhui: A4 noise scan ($Q,\phi_1,k_2$); A5 sensor-bias augmentation.
 Weiting: B2 Monte-Carlo, B3 MHE comparison.\\
 \hline
-6 Apr & Chenhui Cui, Weiting Wu (online) &
+6 Apr & online &
 A4 / A5 / B2 / B3 complete. Key finding: MHE solve time exceeds
 real-time budget; EKF retained as primary estimator. &
 Chenhui: A6 modelling chapter draft.
 Weiting: B4 EKF chapter draft.
 Both: report skeleton and symbol table.\\
 \hline
-19 Apr & Chenhui Cui, Weiting Wu (online) &
+19 Apr & online &
 Identified that $\rho=20$~m is the inner-wall radius at $B$, so
 $R_B=\rho+w=22$~m, not $20$~m. &
 Both: re-run all simulations under corrected geometry
 (commits \texttt{b037600}, \texttt{ee33948}).\\
 \hline
-21 Apr & Chenhui Cui, Weiting Wu (online) &
+21 Apr & online &
 Re-runs revealed that hard clipping on $\ell$ was masking model
 behaviour near the wall. &
 Major modelling revision: bound-respecting nonlinear stiffness
@@ -1403,28 +1404,28 @@ $k(\ell)$ and $\tanh$ saturations (commit \texttt{495da79});
 $Q\!\to\!\mathrm{diag}(0.5,0.002)$;
 Lyapunov steady-state cross-check added.\\
 \hline
-24 Apr & Chenhui Cui, Weiting Wu (in person) &
+24 Apr & in person &
 PR \#2 (modelling polish) and PR \#4 (estimator sync) merged.
 Identified a legacy local-username mis-attribution from earlier
 commits. &
 Created \texttt{.mailmap} and \texttt{AUTHORS.md}; renamed the
 modelling notebook to \texttt{Modelling.ipynb} for clarity.\\
 \hline
-25 Apr (am) & Chenhui Cui, Weiting Wu (online) &
+25 Apr (am) & online &
 PR \#6 merged (beacon-count ablation, sharp $N{=}4{\to}5$ threshold
 confirmed); PR \#7 opened (near-boundary stress test); NIS
 consistency check added. &
 Modelling-side code freeze.\\
 \hline
-25 Apr (pm) & Chenhui Cui (independent finalisation) &
-Consolidated estimator notebook re-implemented with the unified
-nonlinear truth simulator, CasADi-derived prediction Jacobians
-$A_t$ and $L_t$, analytical-Jacobian MHE constraint, $P_0$ and
-$q_\beta$ sensitivity scans, closed-loop covariance-trace plot, and
+25 Apr (pm) & Chenhui Cui only &
+Estimator notebook re-implemented with the unified nonlinear truth
+simulator, CasADi-derived prediction Jacobians $A_t$ and $L_t$,
+analytical-Jacobian MHE constraint, $P_0$ and $q_\beta$ sensitivity
+scans, closed-loop covariance-trace plot, and the
 \code{numpy.random.default\_rng} reproducibility chain. All figures
 regenerated; every reported number exported to
 \code{results\_summary.json}. &
-Final integration of the modelling and estimator chapters into the
+Final integration of the modelling and estimator chapters into a
 single \code{report/main.tex}; notation and cross-references
 harmonised; all numerical claims cross-checked against the
 regenerated \code{results\_summary.json}; final proofreading.\\
