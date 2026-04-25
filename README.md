@@ -10,12 +10,13 @@
 
 ## Repository Structure
 
-| File | Member | Description |
-|---|---|---|
-| `Modelling_ChenhuiCui.ipynb` | A | Track geometry (A1), vehicle motion model (A2), beacon placement (A3), noise validation (A4), sensor bias handling (A5) |
-| `Estimator_WeitingWu.ipynb` | B | EKF implementation and simulation (B1–B4) |
-| `Figures_ChenhuiCui/` | A | Plots produced by Member A's modelling notebook |
-| `Figures_WeitingWu/` | B | Plots produced by Member B's estimator notebook |
+| File | Description |
+|---|---|
+| `Modelling.ipynb` | Track geometry (A1), vehicle motion model (A2), beacon placement (A3), noise validation (A4), sensor bias handling (A5) |
+| `Estimator.ipynb` | EKF (B1 single-run, B2 Monte-Carlo + NIS, B3 MHE comparison, B4 9-state augmented EKF, B5 anchor-count ablation, B6 near-boundary stress) |
+| `Figures_ChenhuiCui/` | Plots produced by `Modelling.ipynb` |
+| `Figures_WeitingWu/` | Plots produced by `Estimator.ipynb` |
+| `results_summary.json` | Numerical results consumed by the report (regenerated each notebook run) |
 
 ---
 
@@ -24,15 +25,18 @@
 ### Dependencies
 pip install numpy matplotlib casadi
 
-### Member A — Modelling
+### Modelling
 
-Open and run all cells in `Modelling_ChenhuiCui.ipynb` (top-to-bottom).
-All figures are saved to `Figures_ChenhuiCui/` and referenced in the report.
+Open and run all cells in `Modelling.ipynb` (top-to-bottom). Figures
+are saved to `Figures_ChenhuiCui/`.
 
-### Member B — EKF
+### Estimator
 
-Open and run all cells in `Estimator_WeitingWu.ipynb`.
-All figures are saved to `Figures_WeitingWu/`.
+Open and run all cells in `Estimator.ipynb`. Figures are saved to
+`Figures_WeitingWu/` and the numerical results table is written to
+`results_summary.json`. Reproducibility is guaranteed: every cell
+seeds its own `np.random.default_rng` from a single `MASTER_SEED`,
+so identical runs produce byte-identical figures.
 
 ---
 

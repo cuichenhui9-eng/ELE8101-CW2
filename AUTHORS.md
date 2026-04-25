@@ -6,20 +6,33 @@ in this repository.
 ## Member A — Chenhui Cui
 GitHub: [@cuichenhui9-eng](https://github.com/cuichenhui9-eng)
 
-- `Modelling_ChenhuiCui.ipynb` — complete modelling pipeline 
-  (A1 track geometry, A2 vehicle motion, A3 beacon placement, 
-  A4 noise validation, A5 sensor bias handling)
-- `report/main.tex` — Section 1 (Modelling) and all appendices
+- `Modelling.ipynb` — complete modelling pipeline
+  (A1 track geometry, A2 bound-respecting vehicle motion, A3 beacon
+  placement via GDOP, A4 noise-parameter validation, A5 sensor-bias
+  state augmentation)
+- `report/main.tex` — Section 1 (Modelling), AI-usage statement, all
+  appendices
 - `Figures_ChenhuiCui/*.png` — all figures referenced in Section 1
 - `.mailmap` — author identity consolidation
+- `Estimator.ipynb` — final consolidated estimator (CasADi-Jacobian
+  prediction step, unified bound-respecting truth model, circular
+  arc-length error metric, per-step EKF runtime benchmark, nonlinear
+  MHE constraint, default-rng-seeded reproducibility,
+  `results_summary.json` export)
+- `Figures_WeitingWu/*.png` — final figures regenerated from the
+  consolidated `Estimator.ipynb`
 
 ## Member B — Weiting Wu
 GitHub: [@wu1826036713-ship-it](https://github.com/wu1826036713-ship-it)
 
-- `Estimator_WeitingWu.ipynb` — EKF and MHE implementation 
-  (B1 EKF, B2 Monte Carlo, B3 comparison, B4 MHE)
-- `Figures_WeitingWu/*.png` — all figures referenced in Sections 2 and 3
+- `Estimator.ipynb` — original B1–B4 cell structure and first-pass
+  implementation (single-run EKF, Monte-Carlo loop, MHE comparison,
+  bias-augmented EKF). Subsequent revisions to the prediction step,
+  truth model, MHE constraint, anchor-count ablation, and reproducibility
+  layer are by Member~A and recorded in the `git log`.
 - `report/main.tex` — Section 2 (EKF) and Section 3 (MHE Comparison)
+  text content from his standalone draft, integrated and revised
+  by Member~A.
 
 ## Joint contributions
 - Abstract and Conclusion in `report/main.tex`
