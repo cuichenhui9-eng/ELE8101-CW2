@@ -31,7 +31,16 @@
 \usepackage{array}
 \usepackage{caption}
 \usepackage{float}
-\graphicspath{{../Figures_Modelling/}{Figures_Modelling/}{../Figures_Estimator/}{Figures_Estimator/}}
+% Permissive graphicspath: search current dir, parent dir, and any
+% Figures_Modelling/ or Figures_Estimator/ subfolder thereof.  This
+% lets the project compile whether main.tex sits next to the figures
+% (Overleaf flat layout) or one level below (GitHub import where
+% main.tex is in report/ and figures are at the repo root).
+\graphicspath{
+  {./}{../}
+  {./Figures_Modelling/}{../Figures_Modelling/}
+  {./Figures_Estimator/}{../Figures_Estimator/}
+}
 
 %---------------- Verbatim helper -----------------------------
 \newcommand{\code}[1]{\texttt{#1}}
@@ -1171,8 +1180,8 @@ $\partial h_\text{aug}/\partial z_\text{aug}$ and
 $\partial h_\text{aug}/\partial v$ are built symbolically in CasADi;
 the bias sub-Jacobian $I_5$ emerges automatically from the additive
 structure of \eqref{eq:haug}, with no hand coding required. The
-augmented \code{measurement\_update\_aug} and \code{time\_update\_aug}
-functions follow the same pattern as the baseline $4$-state primitives.
+augmented measurement-update and time-update functions follow the
+same pattern as the baseline $4$-state primitives.
 
 To verify the augmented filter under noise, a $43$~s single-lap
 simulation was run with the bias vector
@@ -1413,7 +1422,7 @@ stress test), and NIS check (commit \texttt{0bb2c33}); all built on
 Chenhui Cui's modelling. &
 Modelling-side code freeze.\\
 \hline
-25 Apr (pm) & Chenhui Cui only &
+25 Apr (pm) & solo &
 Final consolidated estimator notebook (16 unified patches); all
 figures regenerated; \code{results\_summary.json} exported. &
 Integrated final report; final proofreading.\\
