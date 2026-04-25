@@ -1453,13 +1453,17 @@ conclusion; final proofreading; the repository's
 
 \subsubsection*{A.4 Team reflection}
 The collaboration worked because the modelling/estimator interface
-was defined early and a shared random seed was agreed up-front,
-which kept Monte-Carlo results comparable across the two notebooks.
-The principal challenge was synchronising parameters after the
-mid-project corrections to the small-arc radius and the move to
-bound-respecting dynamics; this was addressed by re-running every
-notebook under the corrected geometry, regenerating all figures, and
-cross-checking the report numbers against the regenerated outputs.
+was defined early, allowing the two members to develop their
+notebooks in parallel without integration friction. The principal
+challenge was synchronising parameters after the mid-project
+corrections to the small-arc radius and the move to bound-respecting
+dynamics; reproducibility across the two notebooks initially relied
+on each notebook calling \code{np.random.seed(42)} independently,
+which left the global RNG state fragile. The final integration round
+replaced this with a single \code{MASTER\_SEED} feeding per-cell
+\code{numpy.random.default\_rng} instances, regenerated every figure
+under the corrected geometry, and cross-checked all reported numbers
+against \code{results\_summary.json}.
 
 %==============================================================
 \begin{thebibliography}{99}
