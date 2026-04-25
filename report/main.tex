@@ -638,13 +638,37 @@ internal-model bias remains.
 \subsection{Single-Run Simulation}
 \label{sec:single-run}
 
-A representative single-lap simulation was conducted over $4300$ time
+A representative single-lap simulation was conducted over $N=4300$ time
 steps (approximately $43$~s at the nominal speed). The initial state
-was $z_0=[0,0,10,0]^{\!\top}$ with diffuse initial covariance
-$P_0=\mathrm{diag}(100,1,25,0.5)$. The design parameters
-$Q=\mathrm{diag}(0.5,0.002)$ and $R=2.25\,\mathrm{m}^2$ are those
-validated by the noise-parameter scan of Section~\ref{sec:noise}.
-Results are shown in Figure~\ref{fig:cell2}.
+is $z_0=[0,0,10,0]^{\!\top}$ with deliberately diffuse initial
+covariance
+\begin{equation}
+P_0=\mathrm{diag}(100,1,25,0.5)
+   =\mathrm{diag}(10^2,\,1^2,\,5^2,\,0.707^2),
+\label{eq:p0}
+\end{equation}
+which corresponds to standard-deviation priors of approximately
+$10$~m on arc-length (about $1$~s of travel at the nominal
+$10$~m/s), $1$~m on lateral offset (one half-lane-width), $5$~m/s on
+longitudinal velocity (50\% of the nominal speed), and $0.707$~m/s on
+lateral velocity (slightly above the $0.55$~m/s physical bound). The
+diffuseness is deliberate: the recursive filter forgets its prior
+within several hundred steps, as the closed-loop covariance trace of
+Figure~\ref{fig:p-conv} (Section~\ref{sec:single-run}) and the
+$P_0$-sensitivity scan of Table~\ref{tab:p0-scan} both confirm.
+
+The remaining design parameters use ``hard'' problem-statement
+quantities wherever possible:
+$h=1/100=0.01$~s is fixed by the $100$~Hz beacon update rate, and
+$R=\sigma_y^2 I_5=1.5^2 I_5=2.25\,I_5\,\mathrm{m}^2$ uses the
+problem-statement range standard deviation $\sigma_y=1.5$~m. The
+process-noise covariance $Q=\mathrm{diag}(0.5,0.002)$ is not
+specified by the problem and was selected by the modelling-side
+parameter scans of Section~\ref{sec:noise}; the NIS consistency
+check in Section~\ref{sec:nis} below provides an independent
+estimator-side confirmation that this $Q$ matches the true noise
+statistics to within $0.1\%$ of the theoretical NIS mean. Results are
+shown in Figure~\ref{fig:cell2}.
 
 \begin{figure}[!htbp]
 \centering
@@ -728,10 +752,20 @@ $5.0$ & $0.26446$\\
 
 To verify that the observed performance is not the result of a single
 favourable noise realisation, a Monte-Carlo study was conducted with
-$100$ independent trials, each one full lap in length. The first
-$5$~s ($500$ time steps) of each trial were excluded from the
-statistics to separate steady-state performance from the
-covariance-convergence transient. Results are summarised in
+$N_{\mathrm{MC}}=100$ independent trials, each one full lap in length.
+The trial count was chosen to keep the standard error of the
+reported mean small relative to the mean itself: with the across-trial
+standard deviation of arc-length error $\sigma_{\mathrm{trial}}=
+0.010$~m, the standard error of the mean is
+$\sigma_{\mathrm{trial}}/\sqrt{N_{\mathrm{MC}}}=0.001$~m and the
+$95\%$ confidence half-width is $\approx 0.002$~m, two orders of
+magnitude below the mean of $0.226$~m. The first $5$~s
+($500$ time steps) of each trial were excluded from the statistics to
+separate steady-state performance from the covariance-convergence
+transient; the cutoff is empirically calibrated against the
+single-run covariance trace of Figure~\ref{fig:p-conv}, which decays
+from $\mathrm{tr}(P_{0|0})\approx 26.8$ to a steady-state mean of
+$5.55$ within this window. Results are summarised in
 Table~\ref{tab:mc-ekf} and Figure~\ref{fig:cell3}.
 
 \begin{table}[!htbp]
@@ -870,9 +904,14 @@ subset retained in each configuration. This ensures Table
 For each of three configurations --- $N=5$ (baseline, all anchors),
 $N=4$ (anchor $a_3$ removed from the $N=5$ baseline), $N=3$ (anchors
 $a_3$ and $a_5$ removed) --- $30$ Monte-Carlo trials of one full lap
-were run with independent random seeds. Steady-state mean arc-length
-and lateral errors are reported in Table~\ref{tab:ablation} alongside
-the per-subset CRB predictions; results are visualised in
+were run with independent random seeds. The trial count is smaller
+than the $100$ used in Section~\ref{sec:mc} because this experiment
+is a secondary trend / robustness check: the relevant deliverable is
+the monotonic ranking of the EKF error under anchor removal, not a
+sub-millimetre estimate of the final performance mean. Steady-state
+mean arc-length and lateral errors are reported in
+Table~\ref{tab:ablation} alongside the per-subset CRB predictions and
+the EKF/CRB efficiency ratio; results are visualised in
 Figure~\ref{fig:cell6}.
 
 \begin{table}[!htbp]
@@ -1122,9 +1161,15 @@ prediction dynamics; they differ only in the solver
 horizon (sliding window of $M$ vs. single time step).
 
 The optimisation was solved using SLSQP from
-SciPy~\cite{Virtanen2020} with $M=10$, giving a decision variable of
-dimension $64$ and $40$ equality constraints. The arrival cost uses
-the previous MHE output as mean with a fixed diagonal prior covariance
+SciPy~\cite{Virtanen2020} with horizon $M=10$, giving a decision
+variable of dimension $64$ and $40$ equality constraints. The choice
+$Mh=0.10$~s corresponds to roughly $1$~m of vehicle motion at the
+nominal $10$~m/s, a natural scale for a finite-lookback arc-length
+estimator and a deliberately short window: SLSQP cost grows
+super-linearly in $M$, so a longer horizon would only widen the
+real-time gap reported below. If even this short horizon is
+infeasible, no longer one is. The arrival cost uses the previous MHE
+output as mean with a fixed diagonal prior covariance
 (self-bootstrapping). The constraint Jacobian
 $\partial[x_{\tau+1}-f(x_\tau,w_\tau)]/\partial(x,w)$ is constructed
 once symbolically with CasADi and passed to SLSQP analytically rather
