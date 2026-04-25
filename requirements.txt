@@ -1,0 +1,11 @@
+# ELE8101 CW2 — Python dependencies
+#
+# Tested on Python 3.13 (Anaconda).  Versions are minimum-tested,
+# not strict pins; later compatible releases should also work.
+
+numpy>=2.3
+scipy>=1.16
+casadi==3.7.2
+matplotlib>=3.10
+jupyter>=1.0
+nbconvert>=7.16
