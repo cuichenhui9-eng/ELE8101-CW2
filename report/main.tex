@@ -202,7 +202,7 @@ G=\begin{bmatrix}0&0\\0&0\\1&0\\0&1\end{bmatrix},
 where the $(3,3)$ entry is the pre-saturation autoregressive
 coefficient $\phi_s=0.999$ multiplied by the local slope of the
 smooth $\tanh$ speed-bounding map (so $\phi_s\,\mathrm{sech}^2(\zeta_s)
-\approx 0.961$ at $v_s=10$~m/s, with $\zeta_s$ the argument of
+\approx 0.960$ at $v_s=10$~m/s, with $\zeta_s$ the argument of
 the $\tanh$ saturation evaluated at the nominal speed),
 $\phi_1=0.9$ and $k_2=10$. Process noise enters only the two
 velocity channels, so $Q\in\mathbb{R}^{2\times 2}$ and $G\in
@@ -441,8 +441,9 @@ statement, and the model does not demand it uniquely.
 Each beacon may exhibit a constant additive measurement bias $\beta_i$
 due to hardware calibration errors or multipath effects. If ignored,
 the EKF estimate drifts persistently. Following the
-state-augmentation approach of~\cite{KalmanVI} (adapted from dynamics
-bias to measurement bias) and~\cite{Simon2006} (Ch.~13), the state
+state-augmentation approach of~\cite{KalmanVI,Sopasakis_4_kalman_variants}
+(adapted from dynamics bias to measurement bias) and~\cite{Simon2006}
+(Ch.~13), the state
 is augmented to $z_\text{aug}=[s,\ell,v_s,v_\ell,\beta_1,\dots,\beta_5]
 ^{\!\top}\in\mathbb{R}^9$, with dynamics
 $z_{\text{aug},t+1}=A_\text{aug}z_{\text{aug},t}+G_\text{aug}
@@ -856,13 +857,14 @@ Section~\ref{sec:beacon} selects $N=5$ anchors through a GDOP-based
 geometric analysis. To validate this choice from the estimator side,
 this section measures recursive EKF performance under three reduced
 configurations and compares each against a \emph{self-consistent}
-single-shot Cram\'er--Rao bound: rather than reusing the
-modelling-side optimal-greedy CRBs of Table~\ref{tab:gdop} (which
-correspond to optimal $N=4$ and $N=3$ layouts that differ from the
-ones used here), the GDOP and CRB are recomputed for the exact anchor
-subset retained in each configuration. This ensures Table
-\ref{tab:ablation} reports apples-to-apples comparisons between
-``EKF arc'' and ``CRB'' columns in every row.
+single-shot GDOP-scale reference: rather than reusing the
+modelling-side optimal-greedy GDOP-scale values of Table~\ref{tab:gdop}
+(which correspond to optimal $N=4$ and $N=3$ layouts that differ from
+the ones used here), the GDOP scale $\sigma_y\overline{\mathrm{GDOP}}$
+is recomputed for the exact anchor subset retained in each
+configuration. This ensures Table~\ref{tab:ablation} reports
+apples-to-apples comparisons between ``EKF arc'' and ``GDOP scale''
+columns in every row.
 
 For each of three configurations --- $N=5$ (baseline, all anchors),
 $N=4$ (anchor $a_3$ removed from the $N=5$ baseline), $N=3$ (anchors
@@ -873,22 +875,23 @@ is a secondary trend / robustness check: the relevant deliverable is
 the monotonic ranking of the EKF error under anchor removal, not a
 sub-millimetre estimate of the final performance mean. Steady-state
 mean arc-length and lateral errors are reported in
-Table~\ref{tab:ablation} alongside the per-subset CRB predictions and
-the EKF/CRB efficiency ratio; results are visualised in
+Table~\ref{tab:ablation} alongside the per-subset GDOP-scale values and
+the EKF/GDOP-scale ratio; results are visualised in
 Figure~\ref{fig:cell6}.
 
 \begin{table}[!htbp]
 \centering
 \caption{Beacon-count ablation: $30$-trial Monte-Carlo per
-configuration. The CRB column is the per-subset
+configuration. The GDOP-scale column is the per-subset
 $\sigma_y\cdot\overline{\mathrm{GDOP}}$ recomputed for the exact
-anchor subset in each row; the EKF/CRB ratio quantifies the
-time-integration gain.}
+anchor subset in each row. It is used as a single-measurement
+geometric reference, not as a lower bound on the recursive
+arc-length error.}
 \label{tab:ablation}
 \begin{tabular}{@{}lcccc@{}}
 \toprule
 \textbf{Configuration} & \textbf{EKF arc (m)} &
-\textbf{EKF lat (m)} & \textbf{CRB (m)} & \textbf{EKF/CRB}\\
+\textbf{EKF lat (m)} & \textbf{GDOP scale (m)} & \textbf{EKF/GDOP scale}\\
 \midrule
 $N=5$ (baseline)            & $0.223$ & $0.0222$ & $1.379$ & $0.16$\\
 $N=4$ (drop $a_3$)          & $0.243$ & $0.0228$ & $1.586$ & $0.15$\\
@@ -901,16 +904,17 @@ $N=3$ (drop $a_3,a_5$)      & $0.268$ & $0.0215$ & $2.070$ & $0.13$\\
 \centering
 \includegraphics[width=\textwidth]{B5_beacon_count_ablation.png}
 \caption{Beacon-count ablation. Left: EKF mean arc-length error
-(blue, $\pm1$~std) versus the per-subset CRB (red). Centre: lateral
-error, largely insensitive to the count. Right: EKF/CRB efficiency
+(blue, $\pm1$~std) versus the per-subset GDOP scale (red). Centre:
+lateral error, largely insensitive to the count. Right: EKF/GDOP-scale
 ratio.}
 \label{fig:cell6}
 \end{figure}
 
 The arc-length error degrades monotonically as the anchor count is
 reduced ($0.223\to0.243\to0.268$~m), in qualitative agreement with
-the per-subset CRB trend ($1.379\to1.586\to2.070$~m); the EKF/CRB
-ratio remains in $0.13$--$0.16$ across all three configurations,
+the per-subset GDOP-scale trend ($1.379\to1.586\to2.070$~m); the
+EKF/GDOP-scale ratio remains in $0.13$--$0.16$ across all three
+configurations,
 indicating that the temporal-information gain over single-shot
 trilateration is roughly constant. The lateral error, by contrast,
 is largely insensitive to the anchor count
@@ -1154,7 +1158,7 @@ formulation: an augmented state
 $z_\text{aug}=[s,\ell,v_s,v_\ell,\beta_1,\dots,\beta_5]^{\!\top}\in
 \mathbb{R}^9$ with block-diagonal $A_\text{aug}$, $G_\text{aug}$,
 $Q_\text{aug}$ matrices, following the state-augmentation approach of
-the course lecture notebook~\cite{Sopasakis_4_kalman_variants} and
+~\cite{KalmanVI,Sopasakis_4_kalman_variants} and
 \cite{Simon2006}~(Ch.~13). The detectability analysis
 ($\mathrm{rank}(\mathcal{O})=8$ with
 $e_{v_\ell}\notin\mathrm{null}(\mathcal{O})$) and the noise-free
@@ -1339,7 +1343,7 @@ nonlinear constraint exceeded the $10$~ms budget by $128\times$,
 supporting the EKF as the preferred estimator. The $9$-state
 augmented variant recovered injected beacon biases up to $0.8$~m to
 within $0.04$~m, with sensitivity to the bias-drift variance
-remaining below $0.12$~m across four decades. The complete EKF
+remaining below $0.12$~m across four decades. The baseline 4-state EKF
 pipeline executes in $0.43$~ms per step.
 
 \paragraph{Working assumptions and limitations.}
