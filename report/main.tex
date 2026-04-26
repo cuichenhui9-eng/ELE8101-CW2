@@ -1468,18 +1468,24 @@ Issue~\#3.
 Chenhui Cui led the modelling component: track geometry; the
 bound-respecting nonlinear vehicle motion model; GDOP-based
 five-beacon optimisation; noise-parameter validation; and the
-state-augmentation formulation for sensor bias. Chenhui Cui also
-wrote the modelling chapter and carried out the final integration
-pass. During the integration pass the estimator notebook was
-synchronised with the nonlinear modelling pipeline: the EKF
-prediction step was updated to use per-step CasADi-derived
-Jacobians ($A_t$, $L_t$); the truth simulator was unified across
-the validation cells; the MHE constraint was given an analytical
-Jacobian; closed-loop covariance and the $P_0$~/~$q_\beta$
-sensitivity analyses were added; and a master-seed reproducibility
-chain together with a JSON results-summary export was introduced.
-The final estimator figures and numerical tables were regenerated
-from this integrated implementation.
+state-augmentation formulation for sensor bias. Chenhui Cui wrote
+Section~1, Sections~4--6, and the appendix, and carried out the
+final integration pass. At the report level, Chenhui Cui
+integrated and substantially revised Weiting Wu's initial EKF/MHE
+drafts into the final Sections~2--3, and was responsible for the
+overall report structure, technical narrative organisation,
+figure/table placement, notation standardisation, formatting and
+final manuscript polish. During the code-integration pass the
+estimator notebook was synchronised with the nonlinear modelling
+pipeline: the EKF prediction step was updated to use per-step
+CasADi-derived Jacobians ($A_t$, $L_t$); the truth simulator was
+unified across the validation cells; the MHE constraint was given
+an analytical Jacobian; closed-loop covariance and the
+$P_0$~/~$q_\beta$ sensitivity analyses were added; and a
+master-seed reproducibility chain together with a JSON
+results-summary export was introduced. The final estimator figures
+and numerical tables were regenerated from this integrated
+implementation.
 
 \textbf{Weiting Wu.}
 Weiting Wu developed the original estimator workflow, including
