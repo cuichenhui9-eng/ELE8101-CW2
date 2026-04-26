@@ -24,7 +24,6 @@ beacons.
 | `report/main.tex` | Integrated LaTeX report (modelling + estimator + appendix). Compile with XeLaTeX. |
 | `AUTHORS.md` | File-level contribution attribution. |
 | `.mailmap` | Author-identity consolidation (corrects an early local-username mis-configuration). |
-| `practise/` | Stand-alone EKF practice notebooks from the lecturer's tutorial sequence. Not used in the final report. |
 
 ---
 

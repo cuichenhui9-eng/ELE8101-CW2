@@ -40,8 +40,12 @@ GitHub: [@wu1826036713-ship-it](https://github.com/wu1826036713-ship-it)
 - `README.md`
 
 ## Contribution statistics
-Running `git shortlog -sn`:
-- Member A: 43 commits
-- Member B: 19 commits
+Running `git shortlog -sn` on `main` (after `.mailmap` consolidation):
+- Member A: 85 commits
+- Member B: 26 commits
+
+GitHub's Contributors widget excludes merge commits and reports
+- Member A: 79 commits, +27,679 / -20,547 lines
+- Member B: 23 commits, +5,728 / -3,026 lines
 
 See Appendix A.3 of the final report for details.
