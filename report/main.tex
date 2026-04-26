@@ -1465,21 +1465,21 @@ Issue~\#3.
 \subsubsection*{A.3 Individual contributions}
 
 \textbf{Chenhui Cui.}
-Modelling component in full --- track geometry; bound-respecting
-nonlinear vehicle motion model; GDOP-based five-beacon
-optimisation; noise-parameter validation; state-augmentation
-formulation for sensor bias; Sections~1--2 of the report. The
-consolidated estimator notebook used for the final submission was
-re-implemented during the integration round: the prediction step
-was replaced by per-step CasADi-derived Jacobians ($A_t$, $L_t$);
+Modelling component in full --- track geometry, the
+bound-respecting nonlinear vehicle motion model, GDOP-based
+five-beacon optimisation, noise-parameter validation, and the
+state-augmentation formulation for sensor bias; Sections~1--2 of
+the report. During the final integration round the consolidated
+estimator notebook was re-implemented: the prediction step was
+replaced by per-step CasADi-derived Jacobians ($A_t$, $L_t$);
 the truth simulator was unified across every cell to the
-bound-respecting $f_{\mathrm{dynamics}}$; the MHE constraint was
-given an analytical Jacobian; closed-loop covariance, $P_0$ and
+bound-respecting nonlinear model; the MHE constraint was given
+an analytical Jacobian; closed-loop covariance and the $P_0$ /
 $q_\beta$ sensitivity analyses were added; and a single
-\code{MASTER\_SEED} reproducibility chain together with
-\code{results\_summary.json} was introduced. All numerical results
-in Sections~3--6 and every figure in \code{Figures\_Estimator/}
-were regenerated against this revised implementation.
+master-seed reproducibility chain together with the JSON
+results-summary export was introduced. All numerical results in
+Sections~3--6, and every figure in the estimator figures
+folder, were regenerated against this revised implementation.
 
 \textbf{Weiting Wu.}
 Original B1--B4 estimator structure (single-run EKF, $100$-trial
