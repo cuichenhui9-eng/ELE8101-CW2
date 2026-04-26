@@ -1465,34 +1465,40 @@ Issue~\#3.
 \subsubsection*{A.3 Individual contributions}
 
 \textbf{Chenhui Cui.}
-Modelling component in full --- track geometry, the
-bound-respecting nonlinear vehicle motion model, GDOP-based
-five-beacon optimisation, noise-parameter validation, and the
-state-augmentation formulation for sensor bias; Sections~1--2 of
-the report. During the final integration round the consolidated
-estimator notebook was re-implemented: the prediction step was
-replaced by per-step CasADi-derived Jacobians ($A_t$, $L_t$);
-the truth simulator was unified across every cell to the
-bound-respecting nonlinear model; the MHE constraint was given
-an analytical Jacobian; closed-loop covariance and the $P_0$ /
-$q_\beta$ sensitivity analyses were added; and a single
-master-seed reproducibility chain together with the JSON
-results-summary export was introduced. All numerical results in
-Sections~3--6, and every figure in the estimator figures
-folder, were regenerated against this revised implementation.
+Chenhui Cui led the modelling component: track geometry; the
+bound-respecting nonlinear vehicle motion model; GDOP-based
+five-beacon optimisation; noise-parameter validation; and the
+state-augmentation formulation for sensor bias. Chenhui Cui also
+wrote the modelling chapter and carried out the final integration
+pass. During the integration pass the estimator notebook was
+synchronised with the nonlinear modelling pipeline: the EKF
+prediction step was updated to use per-step CasADi-derived
+Jacobians ($A_t$, $L_t$); the truth simulator was unified across
+the validation cells; the MHE constraint was given an analytical
+Jacobian; closed-loop covariance and the $P_0$~/~$q_\beta$
+sensitivity analyses were added; and a master-seed reproducibility
+chain together with a JSON results-summary export was introduced.
+The final estimator figures and numerical tables were regenerated
+from this integrated implementation.
 
 \textbf{Weiting Wu.}
-Original B1--B4 estimator structure (single-run EKF, $100$-trial
-Monte-Carlo validation, NIS consistency check, MHE comparison,
-beacon-count ablation, near-boundary stress test); first-pass
-narrative for Sections~3--6. These commits are preserved on the
-\texttt{WeitingWu} branch.
+Weiting Wu developed the original estimator workflow, including
+the first-pass EKF single-run simulation, the Monte-Carlo
+validation, the NIS consistency check, the MHE comparison, the
+beacon-count ablation, and the near-boundary stress test. He also
+provided the initial estimator-side write-up for the EKF and MHE
+comparison sections. These contributions provided the baseline
+estimator structure and validation workflow that were later
+integrated with the final nonlinear modelling pipeline; the
+corresponding commits remain on the \texttt{WeitingWu} branch.
 
-\textbf{Joint.}
-Modelling--estimator interface definition; mid-project re-runs
-under corrected geometry; figure selection; abstract and
-conclusion; final proofreading; the repository's
-\code{README.md}, \code{AUTHORS.md} and \code{.mailmap}.
+\textbf{Joint work.}
+Both members contributed to defining the modelling--estimator
+interface, reviewing assumptions after the geometry correction,
+checking simulation outputs, selecting the report figures, revising
+the abstract and conclusion, proofreading the final report, and
+preparing the repository documentation
+(\code{README.md}, \code{AUTHORS.md}, \code{.mailmap}).
 
 \subsubsection*{A.4 Team reflection}
 The collaboration worked because the modelling/estimator interface
