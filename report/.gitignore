@@ -14,10 +14,5 @@
 *.snm
 *.vrb
 
-# PDF: ignored during development.
-# At final submission, remove this line and commit the final PDF
-# (tagged with `git tag submission-<date>`).
-*.pdf
-
 # Local preview renders (PNGs from pdftoppm, used for visual sanity checks)
 preview/
