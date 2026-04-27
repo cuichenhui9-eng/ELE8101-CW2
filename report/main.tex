@@ -1511,6 +1511,7 @@ submission, and preparing the repository documentation
 (\code{README.md}, \code{AUTHORS.md}, \code{.mailmap}).
 
 \subsubsection*{A.4 Team reflection}
+{\sloppy
 The collaboration worked because the modelling/estimator interface
 was defined early, allowing the two members to develop their
 notebooks in parallel without integration friction. The principal
@@ -1522,7 +1523,8 @@ which left the global RNG state fragile. The final integration round
 replaced this with a single \code{MASTER\_SEED} feeding per-cell
 \code{numpy.random.default\_rng} instances, regenerated every figure
 under the corrected geometry, and cross-checked all reported numbers
-against \code{results\_summary.json}.
+against the auto-exported \code{results\_summary.json} file.
+\par}
 
 %==============================================================
 \begin{thebibliography}{99}
