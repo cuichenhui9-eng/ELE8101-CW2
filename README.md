@@ -1,14 +1,26 @@
-# ELE8101 CW2 — Vehicle State Estimation on a Racing Track
+# Nonlinear State Estimation: EKF and MHE with CasADi
 
-**Module:** ELE8101 Estimation Theory · Queen's University Belfast · Spring 2026
+A Python implementation and side-by-side comparison of two nonlinear
+state estimators on a 2D vehicle-localisation benchmark from
+range-only measurements:
 
-**Authors:** Chenhui Cui, Weiting Wu
+- an **extended Kalman filter (EKF)** with per-step Jacobians obtained
+  from **CasADi automatic differentiation**, ensuring the predictor
+  and the simulator share identical dynamics;
+- a **moving-horizon estimator (MHE)** with the same nonlinear
+  dynamics constraint and an analytical Jacobian.
 
-This repository contains the modelling work, the estimator
-implementation, and the integrated LaTeX report for the ELE8101
-coursework on vehicle state estimation on an asymmetric teardrop
-track using only noisy range measurements to a small number of fixed
-beacons.
+Both estimators are validated by **100-trial Monte-Carlo simulation**,
+a Normalized Innovation Squared consistency check, parameter
+sensitivity scans across four orders of magnitude, and a
+master-seed reproducibility chain that guarantees byte-identical
+results on re-execution. A 9-state augmented EKF additionally
+demonstrates online sensor-bias estimation.
+
+The work was originally developed for ELE8101 Estimation Theory at
+Queen's University Belfast (Spring 2026); the report and meeting
+minutes appendix are kept for context. Authors: Chenhui Cui and
+Weiting Wu.
 
 ---
 
